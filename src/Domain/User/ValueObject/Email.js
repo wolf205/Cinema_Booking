@@ -5,3 +5,5 @@ class Email {
     this.value = value.toLowerCase();
   }
 }
+
+export default Email;

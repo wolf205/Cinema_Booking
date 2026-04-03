@@ -1,4 +1,4 @@
-import Email from "./ValueObject/Email.js";
+import Email from "../ValueObject/Email.js";
 
 class User {
   constructor({ id, name, email, passwordHash, role, createdAt }) {
@@ -62,7 +62,7 @@ class User {
     return {
       id: this.id,
       name: this.name,
-      email: this.email,
+      email: this.email.value,
       role: this.role,
       createdAt: this.createdAt,
     };
@@ -71,7 +71,7 @@ class User {
   toPersistence() {
     return {
       name: this.name,
-      email: this.email,
+      email: this.email.value,
       passwordHash: this.passwordHash,
       role: this.role,
       createdAt: this.createdAt,

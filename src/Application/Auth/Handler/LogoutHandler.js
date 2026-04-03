@@ -1,5 +1,5 @@
 // Application/Auth/Handler/LogoutHandler.js
-import AppError from "../../Domain/Errors/AppError.js";
+import AppError from "../../../Domain/Errors/AppError.js";
 
 class LogoutHandler {
   constructor(refreshTokenRepository) {

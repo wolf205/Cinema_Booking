@@ -1,10 +1,10 @@
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import { Email } from "../../Domain/User/ValueObject/Email.js";
-import AppError from "../../Domain/Errors/AppError.js";
+import Email from "../../../Domain/User/ValueObject/Email.js";
+import AppError from "../../../Domain/Errors/AppError.js";
 import { env } from "../../../Infrastructure/Config/env.js";
 import crypto from "crypto";
-import { raw } from "express";
+import RefreshToken from "../../../Domain/User/Entity/RefreshToken.js";
 
 class LoginHandler {
   constructor(userRepository, refreshTokenRepository) {
@@ -67,6 +67,7 @@ class LoginHandler {
       daysValid: 30,
     });
 
+    await this.refreshTokenRepository.save(refreshToken);
     // ── Bước 7: Trả về token + thông tin cơ bản ───────────────────────
     return {
       token,

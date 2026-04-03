@@ -1,6 +1,6 @@
 // Infrastructure/Http/Controllers/AuthController.js
-import RegisterCommand from "../../Application/Auth/Command/RegisterCommand.js";
-import LoginCommand from "../../Application/Auth/Command/LoginCommand.js";
+import RegisterCommand from "../../../Application/Auth/Command/RegisterCommand.js";
+import LoginCommand from "../../../Application/Auth/Command/LoginCommand.js";
 import LogoutCommand from "../../../Application/Auth/Command/LogoutCommand.js";
 import RefreshTokenCommand from "../../../Application/Auth/Command/RefreshTokenCommand.js";
 

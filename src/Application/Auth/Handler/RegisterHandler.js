@@ -1,6 +1,6 @@
-import { Email } from "../../Domain/User/ValueObject/Email.js";
-import { User } from "../../Domain/User/Entity/User.js";
-import AppError from "../../Domain/Errors/AppError.js";
+import Email from "../../../Domain/User/ValueObject/Email.js";
+import User from "../../../Domain/User/Entity/User.js";
+import AppError from "../../../Domain/Errors/AppError.js";
 import bcrypt from "bcrypt";
 
 class RegisterHandler {
@@ -56,4 +56,4 @@ class RegisterHandler {
   }
 }
 
-module.exports = RegisterHandler;
+export default RegisterHandler;

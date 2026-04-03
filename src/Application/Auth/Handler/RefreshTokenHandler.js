@@ -1,6 +1,6 @@
 // Application/Auth/Handler/RefreshTokenHandler.js
 import jwt from "jsonwebtoken";
-import AppError from "../../Domain/Errors/AppError.js";
+import AppError from "../../../Domain/Errors/AppError.js";
 
 class RefreshTokenHandler {
   constructor(refreshTokenRepository, userRepository) {

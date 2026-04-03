@@ -1,6 +1,6 @@
 // Infrastructure/Http/Middlewares/authMiddleware.js
 import jwt from "jsonwebtoken";
-import AppError from "../../Domain/Errors/AppError.js";
+import AppError from "../../../Domain/Errors/AppError.js";
 import { env } from "../../Config/env.js";
 
 const authMiddleware = async (req, res, next) => {
