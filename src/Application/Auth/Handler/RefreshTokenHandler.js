@@ -1,6 +1,7 @@
 // Application/Auth/Handler/RefreshTokenHandler.js
 import jwt from "jsonwebtoken";
 import AppError from "../../../Domain/Errors/AppError.js";
+import { env } from "../../../Infrastructure/Config/env.js";
 
 class RefreshTokenHandler {
   constructor(refreshTokenRepository, userRepository) {
@@ -43,7 +44,7 @@ class RefreshTokenHandler {
     // ── Bước 4: Sinh Access Token mới ─────────────────────────────────
     const newAccessToken = jwt.sign(
       { userId: user.id, role: user.role },
-      process.env.JWT_SECRET,
+      env.JWT_SECRET,
       { expiresIn: "15m" },
     );
 

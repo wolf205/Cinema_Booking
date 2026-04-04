@@ -1,3 +1,5 @@
+import AppError from "../../../Domain/Errors/AppError.js";
+
 class CreateMovieCommand {
   constructor({
     title,
@@ -13,44 +15,46 @@ class CreateMovieCommand {
   }) {
     // Required fields
     if (!title || typeof title !== "string") {
-      throw new Error("title is required and must be a string");
+      throw new AppError("title is required and must be a string", 400);
     }
     if (!duration || !Number.isInteger(duration) || duration <= 0) {
-      throw new Error("duration must be a positive integer");
+      throw new AppError("duration must be a positive integer", 400);
     }
     if (!Array.isArray(genres) || genres.length === 0) {
-      throw new Error("genres must be a non-empty array");
+      throw new AppError("genres must be a non-empty array", 400);
     }
     if (!Array.isArray(directors) || directors.length === 0) {
-      throw new Error("directors must be a non-empty array");
+      throw new AppError("directors must be a non-empty array", 400);
     }
     if (!releaseDate) {
-      throw new Error("releaseDate is required");
+      throw new AppError("releaseDate is required", 400);
     }
     if (!endDate) {
-      throw new Error("endDate is required");
+      throw new AppError("endDate is required", 400);
     }
 
     // Optional fields - chỉ validate type
     if (posterUrl !== undefined && typeof posterUrl !== "string") {
-      throw new Error("posterUrl must be a string");
+      throw new AppError("posterUrl must be a string", 400);
     }
     if (description !== undefined && typeof description !== "string") {
-      throw new Error("description must be a string");
+      throw new AppError("description must be a string", 400);
     }
 
     // Enums validation
     const allowedAgeRatings = ["P", "K", "T13", "T16", "T18"];
     if (ageRating && !allowedAgeRatings.includes(ageRating)) {
-      throw new Error(
+      throw new AppError(
         `ageRating must be one of: ${allowedAgeRatings.join(", ")}`,
+        400,
       );
     }
 
     const allowedLanguages = ["Vietsub", "Lồng tiếng", "Nguyên bản"];
     if (language && !allowedLanguages.includes(language)) {
-      throw new Error(
+      throw new AppError(
         `language must be one of: ${allowedLanguages.join(", ")}`,
+        400,
       );
     }
 
