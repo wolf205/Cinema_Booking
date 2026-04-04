@@ -1,11 +1,13 @@
 import express from "express";
 import { errorMiddleware } from "./Infrastructure/Http/Middlewares/errorMiddleware.js";
 import authRoutes from "./Infrastructure/Http/Routes/authRoutes.js";
+import movieRoutes from "./Infrastructure/Http/Routes/movieRoutes.js";
 
 const app = express();
 
 app.use(express.json());
 app.use("/auth", authRoutes);
+app.use("/movies", movieRoutes);
 
 // Health check — test nhanh server có chạy không
 app.get("/health", (req, res) => {

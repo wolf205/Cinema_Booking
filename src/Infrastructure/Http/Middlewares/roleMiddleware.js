@@ -1,5 +1,5 @@
 // Infrastructure/Http/Middlewares/roleMiddleware.js
-import AppError from "../../Domain/Errors/AppError.js";
+import AppError from "../../../Domain/Errors/AppError.js";
 
 // Trả về middleware function — dùng như factory
 const requireRole = (...allowedRoles) => {

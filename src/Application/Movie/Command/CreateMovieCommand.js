@@ -66,3 +66,5 @@ class CreateMovieCommand {
     this.language = language || null;
   }
 }
+
+export default CreateMovieCommand;

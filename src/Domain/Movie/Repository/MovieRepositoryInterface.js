@@ -11,6 +11,10 @@ class MovieRepositoryInterface {
     throw new Error("Not implemented");
   }
 
+  async update(movie) {
+    throw new Error("Not implemented");
+  }
+
   async delete(id) {
     throw new Error("Not implemented");
   }
