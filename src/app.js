@@ -2,12 +2,18 @@ import express from "express";
 import { errorMiddleware } from "./Infrastructure/Http/Middlewares/errorMiddleware.js";
 import authRoutes from "./Infrastructure/Http/Routes/authRoutes.js";
 import movieRoutes from "./Infrastructure/Http/Routes/movieRoutes.js";
+import cinemaRoutes from "./Infrastructure/Http/Routes/cinemaRoutes.js";
+import roomRoutes from "./Infrastructure/Http/Routes/roomRoutes.js";
+import seatRoutes from "./Infrastructure/Http/Routes/seatRoutes.js";
 
 const app = express();
 
 app.use(express.json());
 app.use("/auth", authRoutes);
 app.use("/movies", movieRoutes);
+app.use("/cinemas", cinemaRoutes);
+app.use("/rooms", roomRoutes);
+app.use("/seats", seatRoutes);
 
 // Health check — test nhanh server có chạy không
 app.get("/health", (req, res) => {
