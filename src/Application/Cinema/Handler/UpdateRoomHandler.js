@@ -49,41 +49,24 @@ class UpdateRoomHandler {
     // Không thể patch từng ghế vì số hàng/số cột thay đổi hoàn toàn
     // → xóa hết ghế cũ, tạo lại theo kích thước mới
     // Cần transaction để đảm bảo atomicity
-    if (gridChanged) {
-      const conn = await this.roomRepository.pool.getConnection();
-
-      try {
-        await conn.beginTransaction();
-
-        const updatedRoom = await this.roomRepository.update(existing);
-
-        await this.seatRepository.deleteByRoomId(id);
-
-        const newSeats = this.#generateSeats(
-          id,
-          existing.totalRows,
-          existing.seatsPerRow,
-        );
-        const savedSeats = await this.seatRepository.saveMany(newSeats);
-
-        await conn.commit();
-
-        return {
-          ...updatedRoom.toJSON(),
-          seats: savedSeats.map((seat) => seat.toJSON()),
-        };
-      } catch (err) {
-        await conn.rollback();
-        throw err;
-      } finally {
-        conn.release();
-      }
+    if (!gridChanged) {
+      const updatedRoom = await this.roomRepository.update(existing);
+      return updatedRoom.toJSON();
     }
-
-    // ── Bước 6: Không đổi grid → update room đơn giản ─────────────────
-    const updatedRoom = await this.roomRepository.update(existing);
-
-    return updatedRoom.toJSON();
+    return await this.roomRepository.withTransaction(async () => {
+      const updatedRoom = await this.roomRepository.update(existing);
+      await this.seatRepository.deleteByRoomId(id);
+      const newSeats = this.#generateSeats(
+        id,
+        existing.totalRows,
+        existing.seatsPerRow,
+      );
+      const savedSeats = await this.seatRepository.saveMany(newSeats);
+      return {
+        ...updatedRoom.toJSON(),
+        seats: savedSeats.map((seat) => seat.toJSON()),
+      };
+    });
   }
 
   // ── Generate Seat entities theo grid rows × seatsPerRow ───────────

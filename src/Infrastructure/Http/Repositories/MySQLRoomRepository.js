@@ -156,6 +156,21 @@ class MySQLRoomRepository extends RoomRepositoryInterface {
     return rows.length > 0;
   }
 
+  async withTransaction(fn) {
+    const conn = await this.pool.getConnection();
+    try {
+      await conn.beginTransaction();
+      const result = await fn(conn);
+      await conn.commit();
+      return result;
+    } catch (err) {
+      await conn.rollback();
+      throw err;
+    } finally {
+      conn.release();
+    }
+  }
+
   // ── Private helper — map raw DB row → Room entity ─────────────────
   #toEntity(row) {
     return Room.fromPersistence({

@@ -43,31 +43,16 @@ class CreateRoomHandler {
     // ── Bước 4: Lưu Room + bulk insert Seats trong transaction ────────
     // Dùng connection riêng để đảm bảo atomicity —
     // nếu saveMany thất bại thì room cũng không được tạo
-    const conn = await this.roomRepository.pool.getConnection();
-
-    try {
-      await conn.beginTransaction();
-
+    return await this.roomRepository.withTransaction(async () => {
       const savedRoom = await this.roomRepository.save(room);
-
-      // ── Bước 5: Generate toàn bộ ghế từ totalRows × seatsPerRow ─────
-      // Row dùng chữ cái A-Z, number dùng số 1..seatsPerRow
       const seats = this.#generateSeats(savedRoom.id, totalRows, seatsPerRow);
       const savedSeats = await this.seatRepository.saveMany(seats);
 
-      await conn.commit();
-
-      // ── Bước 6: Trả về room + danh sách ghế ──────────────────────────
       return {
         ...savedRoom.toJSON(),
         seats: savedSeats.map((seat) => seat.toJSON()),
       };
-    } catch (err) {
-      await conn.rollback();
-      throw err;
-    } finally {
-      conn.release();
-    }
+    });
   }
 
   // ── Generate Seat entities theo grid rows × seatsPerRow ───────────

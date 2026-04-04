@@ -24,8 +24,9 @@ class RegisterHandler {
     // ── Bước 2: Validate email bằng ValueObject ───────────────────────
     // Email VO tự throw nếu sai định dạng — không cần if/else ở đây
     // "  HELLO@GMAIL.COM  " → tự trim + lowercase bên trong VO
+    let emailVO;
     try {
-      const emailVO = new Email(email);
+      emailVO = new Email(email);
     } catch (e) {
       throw new AppError(e.message, 422);
     }

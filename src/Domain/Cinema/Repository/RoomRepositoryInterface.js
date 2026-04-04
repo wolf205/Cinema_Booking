@@ -39,6 +39,10 @@ class RoomRepositoryInterface {
   async existsById(id) {
     throw new AppError("Not implemented", 500);
   }
+
+  async withTransaction(fn) {
+    throw new AppError("Not implemented", 500);
+  }
 }
 
 export default RoomRepositoryInterface;
