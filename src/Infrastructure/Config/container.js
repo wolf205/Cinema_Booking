@@ -8,6 +8,7 @@ import MySQLMovieRepository from "../Http/Repositories/MySQLMovieRepository.js";
 import MySQLCinemaRepository from "../Http/Repositories/MySQLCinemaRepository.js";
 import MySQLRoomRepository from "../Http/Repositories/MySQLRoomRepository.js";
 import MySQLSeatRepository from "../Http/Repositories/MySQLSeatRepository.js";
+import MySQLShowtimeRepository from "../Http/Repositories/MySQLShowtimeRepository.js";
 // ── Handlers ──────────────────────────────────────────────────────────────────
 import RegisterHandler from "../../Application/Auth/Handler/RegisterHandler.js";
 import LoginHandler from "../../Application/Auth/Handler/LoginHandler.js";
@@ -34,6 +35,11 @@ import ListRoomsHandler from "../../Application/Cinema/Handler/ListRoomsHandler.
 
 import UpdateSeatHandler from "../../Application/Cinema/Handler/UpdateSeatHandler.js";
 import GetSeatMapHandler from "../../Application/Cinema/Handler/GetSeatMapHandler.js";
+
+import CreateShowtimeHandler from "../../Application/Showtime/Handler/CreateShowtimeHandler.js";
+import CancelShowtimeHandler from "../../Application/Showtime/Handler/CancelShowtimeHandler.js";
+import GetShowtimeHandler from "../../Application/Showtime/Handler/GetShowtimeHandler.js";
+import ListShowtimesHandler from "../../Application/Showtime/Handler/ListShowtimesHandler.js";
 // ── Controllers ───────────────────────────────────────────────────────────────
 import AuthController from "../Http/Controllers/AuthController.js";
 import MovieController from "../Http/Controllers/MovieController.js";
@@ -41,6 +47,8 @@ import MovieController from "../Http/Controllers/MovieController.js";
 import CinemaController from "../Http/Controllers/CinemaController.js";
 import RoomController from "../Http/Controllers/RoomController.js";
 import SeatController from "../Http/Controllers/SeatController.js";
+
+import ShowtimeController from "../Http/Controllers/ShowtimeController.js";
 // ═════════════════════════════════════════════════════════════════════════════
 // Khởi tạo theo thứ tự: Repository → Handler → Controller
 // Repository không phụ thuộc gì → Handler phụ thuộc Repository → Controller phụ thuộc Handler
@@ -54,6 +62,8 @@ const movieRepository = new MySQLMovieRepository(pool);
 const cinemaRepository = new MySQLCinemaRepository(pool);
 const roomRepository = new MySQLRoomRepository(pool);
 const seatRepository = new MySQLSeatRepository(pool);
+
+const showtimeRepository = new MySQLShowtimeRepository(pool);
 // ── Tầng 2: Handlers ──────────────────────────────────────────────────────────
 const registerHandler = new RegisterHandler(userRepository);
 const loginHandler = new LoginHandler(userRepository, refreshTokenRepository);
@@ -87,6 +97,15 @@ const listRoomsHandler = new ListRoomsHandler(cinemaRepository, roomRepository);
 
 const updateSeatHandler = new UpdateSeatHandler(seatRepository);
 const getSeatMapHandler = new GetSeatMapHandler(roomRepository, seatRepository);
+
+const createShowtimeHandler = new CreateShowtimeHandler(
+  movieRepository,
+  roomRepository,
+  showtimeRepository,
+);
+const cancelShowtimeHandler = new CancelShowtimeHandler(showtimeRepository);
+const getShowtimeHandler = new GetShowtimeHandler(showtimeRepository);
+const listShowtimesHandler = new ListShowtimesHandler(showtimeRepository);
 // ── Tầng 3: Controllers ───────────────────────────────────────────────────────
 const authController = new AuthController(
   registerHandler,
@@ -121,10 +140,18 @@ const roomController = new RoomController(
 
 const seatController = new SeatController(updateSeatHandler, getSeatMapHandler);
 
+const showtimeController = new ShowtimeController(
+  createShowtimeHandler,
+  cancelShowtimeHandler,
+  getShowtimeHandler,
+  listShowtimesHandler,
+);
+
 export {
   authController,
   movieController,
   cinemaController,
   roomController,
   seatController,
+  showtimeController,
 };

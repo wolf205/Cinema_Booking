@@ -5,6 +5,7 @@ import movieRoutes from "./Infrastructure/Http/Routes/movieRoutes.js";
 import cinemaRoutes from "./Infrastructure/Http/Routes/cinemaRoutes.js";
 import roomRoutes from "./Infrastructure/Http/Routes/roomRoutes.js";
 import seatRoutes from "./Infrastructure/Http/Routes/seatRoutes.js";
+import showtimeRoutes from "./Infrastructure/Http/Routes/showtimeRoutes.js";
 
 const app = express();
 
@@ -14,6 +15,7 @@ app.use("/movies", movieRoutes);
 app.use("/cinemas", cinemaRoutes);
 app.use("/rooms", roomRoutes);
 app.use("/seats", seatRoutes);
+app.use("/showtimes", showtimeRoutes);
 
 // Health check — test nhanh server có chạy không
 app.get("/health", (req, res) => {
