@@ -52,6 +52,7 @@ class Cinema {
       address: this.address,
       city: this.city,
       phone: this.phone,
+      imageUrl: this.imageUrl,
       createdAt: this.createdAt,
     };
   }
