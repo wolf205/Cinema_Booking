@@ -9,6 +9,7 @@ import showtimeRoutes from "./Infrastructure/Http/Routes/showtimeRoutes.js";
 import bookingRoutes from "./Infrastructure/Http/Routes/bookingRoutes.js";
 
 const app = express();
+const router = express.Router();
 
 app.use(express.json());
 app.use("/auth", authRoutes);
@@ -18,7 +19,9 @@ app.use("/rooms", roomRoutes);
 app.use("/seats", seatRoutes);
 app.use("/showtimes", showtimeRoutes);
 app.use("/bookings", bookingRoutes);
-app.use("/", bookingRoutes); // cho route GET /showtimes/:showtimeId/seats
+router.get("/showtimes/:showtimeId/seats", (req, res, next) =>
+  bookingController.getSeatMap(req, res, next),
+);
 
 // Health check — test nhanh server có chạy không
 app.get("/health", (req, res) => {

@@ -53,9 +53,6 @@ class Booking {
     if (!this.showtimeId || !Number.isInteger(Number(this.showtimeId))) {
       throw new Error("showtimeId is required and must be an integer");
     }
-    if (!Array.isArray(this.seats) || this.seats.length === 0) {
-      throw new Error("seats must be a non-empty array");
-    }
     if (!Number.isFinite(this.totalPrice) || this.totalPrice < 0) {
       throw new Error("totalPrice must be a non-negative number");
     }
@@ -123,6 +120,10 @@ class Booking {
   static create({ userId, showtimeId, seats, totalPrice }) {
     const heldUntil = new Date();
     heldUntil.setMinutes(heldUntil.getMinutes() + HOLD_MINUTES);
+
+    if (!Array.isArray(seats) || seats.length === 0) {
+      throw new Error("seats must be a non-empty array");
+    }
 
     return new Booking({
       id: null,
