@@ -9,6 +9,7 @@ import MySQLCinemaRepository from "../Http/Repositories/MySQLCinemaRepository.js
 import MySQLRoomRepository from "../Http/Repositories/MySQLRoomRepository.js";
 import MySQLSeatRepository from "../Http/Repositories/MySQLSeatRepository.js";
 import MySQLShowtimeRepository from "../Http/Repositories/MySQLShowtimeRepository.js";
+import MySQLBookingRepository from "../Http/Repositories/MySQLBookingRepository.js";
 // ── Handlers ──────────────────────────────────────────────────────────────────
 import RegisterHandler from "../../Application/Auth/Handler/RegisterHandler.js";
 import LoginHandler from "../../Application/Auth/Handler/LoginHandler.js";
@@ -40,6 +41,14 @@ import CreateShowtimeHandler from "../../Application/Showtime/Handler/CreateShow
 import CancelShowtimeHandler from "../../Application/Showtime/Handler/CancelShowtimeHandler.js";
 import GetShowtimeHandler from "../../Application/Showtime/Handler/GetShowtimeHandler.js";
 import ListShowtimesHandler from "../../Application/Showtime/Handler/ListShowtimesHandler.js";
+
+import CreateBookingHandler from "../../Application/Booking/Handler/CreateBookingHandler.js";
+import CancelBookingHandler from "../../Application/Booking/Handler/CancelBookingHandler.js";
+import ConfirmBookingHandler from "../../Application/Booking/Handler/ConfirmBookingHandler.js";
+import GetBookingHandler from "../../Application/Booking/Handler/GetBookingHandler.js";
+import ListBookingsHandler from "../../Application/Booking/Handler/ListBookingsHandler.js";
+import GetSeatMapForShowtimeHandler from "../../Application/Booking/Handler/GetSeatMapForShowtimeHandler.js";
+
 // ── Controllers ───────────────────────────────────────────────────────────────
 import AuthController from "../Http/Controllers/AuthController.js";
 import MovieController from "../Http/Controllers/MovieController.js";
@@ -49,6 +58,8 @@ import RoomController from "../Http/Controllers/RoomController.js";
 import SeatController from "../Http/Controllers/SeatController.js";
 
 import ShowtimeController from "../Http/Controllers/ShowtimeController.js";
+
+import BookingController from "../Http/Controllers/BookingController.js";
 // ═════════════════════════════════════════════════════════════════════════════
 // Khởi tạo theo thứ tự: Repository → Handler → Controller
 // Repository không phụ thuộc gì → Handler phụ thuộc Repository → Controller phụ thuộc Handler
@@ -64,6 +75,8 @@ const roomRepository = new MySQLRoomRepository(pool);
 const seatRepository = new MySQLSeatRepository(pool);
 
 const showtimeRepository = new MySQLShowtimeRepository(pool);
+
+const bookingRepository = new MySQLBookingRepository(pool);
 // ── Tầng 2: Handlers ──────────────────────────────────────────────────────────
 const registerHandler = new RegisterHandler(userRepository);
 const loginHandler = new LoginHandler(userRepository, refreshTokenRepository);
@@ -106,6 +119,33 @@ const createShowtimeHandler = new CreateShowtimeHandler(
 const cancelShowtimeHandler = new CancelShowtimeHandler(showtimeRepository);
 const getShowtimeHandler = new GetShowtimeHandler(showtimeRepository);
 const listShowtimesHandler = new ListShowtimesHandler(showtimeRepository);
+
+const getSeatMapForShowtimeHandler = new GetSeatMapForShowtimeHandler(
+  showtimeRepository,
+  roomRepository,
+  seatRepository,
+  bookingRepository,
+);
+
+const createBookingHandler = new CreateBookingHandler(
+  showtimeRepository,
+  seatRepository,
+  bookingRepository,
+);
+
+const getBookingHandler = new GetBookingHandler(
+  bookingRepository,
+  showtimeRepository,
+);
+
+const listBookingsHandler = new ListBookingsHandler(bookingRepository);
+
+const cancelBookingHandler = new CancelBookingHandler(bookingRepository);
+
+const confirmBookingHandler = new ConfirmBookingHandler(
+  bookingRepository,
+  showtimeRepository,
+);
 // ── Tầng 3: Controllers ───────────────────────────────────────────────────────
 const authController = new AuthController(
   registerHandler,
@@ -147,6 +187,15 @@ const showtimeController = new ShowtimeController(
   listShowtimesHandler,
 );
 
+const bookingController = new BookingController(
+  createBookingHandler,
+  cancelBookingHandler,
+  confirmBookingHandler,
+  getBookingHandler,
+  listBookingsHandler,
+  getSeatMapForShowtimeHandler,
+);
+
 export {
   authController,
   movieController,
@@ -154,4 +203,5 @@ export {
   roomController,
   seatController,
   showtimeController,
+  bookingController,
 };
