@@ -8,6 +8,9 @@ const router = express.Router();
 // ── Seat map — public, không cần đăng nhập ────────────────────────────────
 // Đặt ở bookingRoutes thay vì showtimeRoutes vì phụ thuộc bookingRepository
 // Nếu muốn đặt ở showtimeRoutes thì cần truyền bookingController sang đó
+router.get("/showtimes/:showtimeId/seats", (req, res, next) =>
+  bookingController.getSeatMap(req, res, next),
+);
 
 // ── Booking routes — tất cả đều cần đăng nhập ────────────────────────────
 router.use(authMiddleware);

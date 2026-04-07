@@ -10,6 +10,7 @@ import MySQLRoomRepository from "../Http/Repositories/MySQLRoomRepository.js";
 import MySQLSeatRepository from "../Http/Repositories/MySQLSeatRepository.js";
 import MySQLShowtimeRepository from "../Http/Repositories/MySQLShowtimeRepository.js";
 import MySQLBookingRepository from "../Http/Repositories/MySQLBookingRepository.js";
+import MySQLPaymentRepository from "../Http/Repositories/MySQLPaymentRepository.js";
 // ── Handlers ──────────────────────────────────────────────────────────────────
 import RegisterHandler from "../../Application/Auth/Handler/RegisterHandler.js";
 import LoginHandler from "../../Application/Auth/Handler/LoginHandler.js";
@@ -49,6 +50,11 @@ import GetBookingHandler from "../../Application/Booking/Handler/GetBookingHandl
 import ListBookingsHandler from "../../Application/Booking/Handler/ListBookingsHandler.js";
 import GetSeatMapForShowtimeHandler from "../../Application/Booking/Handler/GetSeatMapForShowtimeHandler.js";
 
+import InitiatePaymentHandler from "../../Application/Payment/Handler/InitiatePaymentHandler.js";
+import ConfirmPaymentHandler from "../../Application/Payment/Handler/ConfirmPaymentHandler.js";
+import FailPaymentHandler from "../../Application/Payment/Handler/FailPaymentHandler.js";
+import GetPaymentHandler from "../../Application/Payment/Handler/GetPaymentHandler.js";
+
 // ── Controllers ───────────────────────────────────────────────────────────────
 import AuthController from "../Http/Controllers/AuthController.js";
 import MovieController from "../Http/Controllers/MovieController.js";
@@ -60,6 +66,8 @@ import SeatController from "../Http/Controllers/SeatController.js";
 import ShowtimeController from "../Http/Controllers/ShowtimeController.js";
 
 import BookingController from "../Http/Controllers/BookingController.js";
+
+import PaymentController from "../Http/Controllers/PaymentController.js";
 // ═════════════════════════════════════════════════════════════════════════════
 // Khởi tạo theo thứ tự: Repository → Handler → Controller
 // Repository không phụ thuộc gì → Handler phụ thuộc Repository → Controller phụ thuộc Handler
@@ -77,6 +85,8 @@ const seatRepository = new MySQLSeatRepository(pool);
 const showtimeRepository = new MySQLShowtimeRepository(pool);
 
 const bookingRepository = new MySQLBookingRepository(pool);
+
+const paymentRepository = new MySQLPaymentRepository(pool);
 // ── Tầng 2: Handlers ──────────────────────────────────────────────────────────
 const registerHandler = new RegisterHandler(userRepository);
 const loginHandler = new LoginHandler(userRepository, refreshTokenRepository);
@@ -146,6 +156,18 @@ const confirmBookingHandler = new ConfirmBookingHandler(
   bookingRepository,
   showtimeRepository,
 );
+
+const initiatePaymentHandler = new InitiatePaymentHandler(
+  bookingRepository,
+  paymentRepository,
+);
+const confirmPaymentHandler = new ConfirmPaymentHandler(
+  paymentRepository,
+  bookingRepository,
+  showtimeRepository,
+);
+const failPaymentHandler = new FailPaymentHandler(paymentRepository);
+const getPaymentHandler = new GetPaymentHandler(paymentRepository);
 // ── Tầng 3: Controllers ───────────────────────────────────────────────────────
 const authController = new AuthController(
   registerHandler,
@@ -196,6 +218,13 @@ const bookingController = new BookingController(
   getSeatMapForShowtimeHandler,
 );
 
+const paymentController = new PaymentController(
+  initiatePaymentHandler,
+  confirmPaymentHandler,
+  failPaymentHandler,
+  getPaymentHandler,
+);
+
 export {
   authController,
   movieController,
@@ -204,4 +233,5 @@ export {
   seatController,
   showtimeController,
   bookingController,
+  paymentController,
 };

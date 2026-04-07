@@ -89,6 +89,10 @@ class BookingRepositoryInterface {
   async existsById(id) {
     throw new AppError("Not implemented", 500);
   }
+
+  async updateWithConn(booking, conn) {
+    throw new AppError("Not implemented", 500);
+  }
 }
 
 export default BookingRepositoryInterface;

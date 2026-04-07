@@ -249,6 +249,30 @@ class MySQLBookingRepository extends BookingRepositoryInterface {
 
     return rows.map((row) => BookingSeat.fromPersistence(row));
   }
+
+  // Thêm method này vào class MySQLBookingRepository
+
+  // ── Update booking trong connection có sẵn — dùng trong transaction ──
+  // Dùng khi ConfirmPaymentHandler cần update payment + booking cùng lúc
+  // Pattern giống updateWithConn trong MySQLPaymentRepository
+  async updateWithConn(booking, conn) {
+    const { status, confirmed_at, cancelled_at } = booking.toPersistence();
+
+    const [result] = await conn.execute(
+      `UPDATE bookings
+     SET status       = ?,
+         confirmed_at = ?,
+         cancelled_at = ?
+     WHERE id = ?`,
+      [status, confirmed_at, cancelled_at, booking.id],
+    );
+
+    if (result.affectedRows === 0) {
+      throw new Error(`Booking với id=${booking.id} không tồn tại`);
+    }
+
+    return booking;
+  }
 }
 
 export default MySQLBookingRepository;

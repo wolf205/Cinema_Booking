@@ -7,9 +7,9 @@ import roomRoutes from "./Infrastructure/Http/Routes/roomRoutes.js";
 import seatRoutes from "./Infrastructure/Http/Routes/seatRoutes.js";
 import showtimeRoutes from "./Infrastructure/Http/Routes/showtimeRoutes.js";
 import bookingRoutes from "./Infrastructure/Http/Routes/bookingRoutes.js";
+import paymentRoutes from "./Infrastructure/Http/Routes/paymentRoutes.js";
 
 const app = express();
-const router = express.Router();
 
 app.use(express.json());
 app.use("/auth", authRoutes);
@@ -19,9 +19,8 @@ app.use("/rooms", roomRoutes);
 app.use("/seats", seatRoutes);
 app.use("/showtimes", showtimeRoutes);
 app.use("/bookings", bookingRoutes);
-router.get("/showtimes/:showtimeId/seats", (req, res, next) =>
-  bookingController.getSeatMap(req, res, next),
-);
+app.use("/", bookingRoutes);
+app.use("/payments", paymentRoutes);
 
 // Health check — test nhanh server có chạy không
 app.get("/health", (req, res) => {
