@@ -8,6 +8,7 @@ import seatRoutes from "./Infrastructure/Http/Routes/seatRoutes.js";
 import showtimeRoutes from "./Infrastructure/Http/Routes/showtimeRoutes.js";
 import bookingRoutes from "./Infrastructure/Http/Routes/bookingRoutes.js";
 import paymentRoutes from "./Infrastructure/Http/Routes/paymentRoutes.js";
+import uploadRoutes from "./Infrastructure/Http/Routes/uploadRoutes.js";
 
 const app = express();
 
@@ -21,6 +22,7 @@ app.use("/showtimes", showtimeRoutes);
 app.use("/bookings", bookingRoutes);
 app.use("/", bookingRoutes);
 app.use("/payments", paymentRoutes);
+app.use("/upload", uploadRoutes);
 
 // Health check — test nhanh server có chạy không
 app.get("/health", (req, res) => {
