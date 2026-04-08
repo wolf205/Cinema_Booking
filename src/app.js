@@ -13,6 +13,7 @@ import uploadRoutes from "./Infrastructure/Http/Routes/uploadRoutes.js";
 const app = express();
 
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 app.use("/auth", authRoutes);
 app.use("/movies", movieRoutes);
 app.use("/cinemas", cinemaRoutes);
