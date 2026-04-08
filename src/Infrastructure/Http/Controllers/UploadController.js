@@ -5,6 +5,7 @@ class UploadController {
   // POST /upload/image
   async uploadImage(req, res, next) {
     try {
+      console.log("Đã vào tới Controller!");
       // multer-storage-cloudinary gắn thông tin file vào req.file sau khi upload xong
       // Nếu không có req.file → client không gửi file lên
       if (!req.file) {

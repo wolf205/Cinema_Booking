@@ -1,10 +1,15 @@
 import { v2 as cloudinary } from "cloudinary";
 import multer from "multer";
-import { createRequire } from "module";
+import { createRequire } from "module"; // Dòng này cực kỳ quan trọng
+import { env } from "./env.js";
+
+// Khởi tạo hàm require cho môi trường ES Module
+const require = createRequire(import.meta.url);
+
+// Bây giờ mới có thể dùng require ở đây
 const multerCloudinary = require("multer-storage-cloudinary");
 const CloudinaryStorage =
   multerCloudinary.CloudinaryStorage || multerCloudinary;
-import { env } from "./env.js";
 
 // ── Cấu hình Cloudinary credentials ──────────────────────────────────────────
 cloudinary.config({
@@ -15,14 +20,14 @@ cloudinary.config({
 
 // ── Cấu hình storage — nơi ảnh được lưu trên Cloudinary ──────────────────────
 const storage = new CloudinaryStorage({
-  cloudinary,
-  params: {
-    folder: "cinema-app", // thư mục trên Cloudinary
-    allowed_formats: ["jpg", "jpeg", "png", "webp"],
-    transformation: [
-      { width: 1920, crop: "limit" }, // giới hạn chiều rộng tối đa
-      { quality: "auto" }, // Cloudinary tự tối ưu chất lượng
-    ],
+  // Thay vì chỉ ghi 'cloudinary', hãy ghi rõ ràng:
+  cloudinary: cloudinary,
+  params: async (req, file) => {
+    return {
+      folder: "cinema-app",
+      format: "jpg", // Chuyển hết về jpg để đồng bộ (tùy chọn)
+      transformation: [{ width: 1920, crop: "limit" }, { quality: "auto" }],
+    };
   },
 });
 
