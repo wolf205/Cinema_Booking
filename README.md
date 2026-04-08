@@ -1,7 +1,3 @@
-This is a markdown file, so I'll write it directly inline — no need for file tools. Here's the README:
-
----
-
 # 🎬 CineBooking API
 
 REST API cho hệ thống đặt vé xem phim, xây dựng theo kiến trúc **Domain-Driven Design (DDD)** với Node.js, Express và MySQL.
@@ -31,6 +27,8 @@ CineBooking API cung cấp đầy đủ backend cho ứng dụng đặt vé rạ
 - Quản lý phim, rạp, phòng chiếu, ghế ngồi
 - Quản lý lịch chiếu (showtime) với kiểm tra conflict
 - Đặt vé, giữ ghế tạm thời (10 phút), xác nhận thanh toán
+- Payment session với mock checkout và chuẩn bị tích hợp VNPay/Momo
+- Upload ảnh lên Cloudinary
 - Xác thực người dùng với JWT + Refresh Token
 - Phân quyền admin / user
 
@@ -61,6 +59,7 @@ Dependency injection được quản lý tập trung qua `container.js`, theo th
 | Database | MySQL 8+ |
 | ORM/Driver | mysql2/promise |
 | Auth | JWT + bcrypt |
+| File Upload | Cloudinary + multer-storage-cloudinary |
 | Validation | Tự implement qua Command/Entity |
 
 ---
@@ -97,6 +96,11 @@ MYSQL_DATABASE=cinebooking
 JWT_SECRET=your_super_secret_key_here
 
 NODE_ENV=development
+
+# Cloudinary (cần cho upload ảnh)
+CLOUDINARY_CLOUD_NAME=your_cloud_name
+CLOUDINARY_API_KEY=your_api_key
+CLOUDINARY_API_SECRET=your_api_secret
 ```
 
 ---
@@ -142,30 +146,44 @@ src/
 │   ├── Movie/
 │   ├── Cinema/                     # Cinema, Room, Seat
 │   ├── Showtime/
-│   └── Booking/                    # Booking, BookingSeat
+│   ├── Booking/                    # Booking, BookingSeat
+│   └── Payment/
+│       ├── Entity/
+│       │   └── Payment.js
+│       └── Repository/
+│           └── PaymentRepositoryInterface.js
 │
 ├── Application/                    # Tầng Application — logic nghiệp vụ
 │   ├── Auth/
-│   │   ├── Command/                # LoginCommand, RegisterCommand, ...
-│   │   └── Handler/                # LoginHandler, RegisterHandler, ...
+│   │   ├── Command/
+│   │   └── Handler/
 │   ├── Movie/
 │   ├── Cinema/
 │   ├── Showtime/
-│   └── Booking/
+│   ├── Booking/
+│   └── Payment/
+│       ├── Command/                # InitiatePaymentCommand, ConfirmPaymentCommand, FailPaymentCommand
+│       ├── Query/                  # GetPaymentQuery
+│       └── Handler/                # InitiatePaymentHandler, ConfirmPaymentHandler, FailPaymentHandler, GetPaymentHandler
 │
 └── Infrastructure/                 # Tầng Infrastructure — kết nối ra ngoài
     ├── Config/
     │   ├── database.js
     │   ├── env.js
+    │   ├── cloudinary.js           # Cloudinary + multer config
     │   └── container.js            # Dependency injection
     └── Http/
         ├── Controllers/
+        │   └── UploadController.js
         ├── Middlewares/
         │   ├── authMiddleware.js
         │   ├── roleMiddleware.js
         │   └── errorMiddleware.js
-        ├── Repositories/           # MySQL implementations
+        ├── Repositories/
+        │   └── MySQLPaymentRepository.js
         └── Routes/
+            ├── paymentRoutes.js
+            └── uploadRoutes.js
 ```
 
 ---
@@ -281,10 +299,11 @@ GET /movies?status=now_showing&genre=Hành+động&page=1&limit=10
 
 | Method | Endpoint | Auth | Mô tả |
 |---|---|---|---|
+| GET | `/showtimes/:showtimeId/seats` | — | Sơ đồ ghế theo suất chiếu (kèm trạng thái + giá) |
 | GET | `/bookings` | ✅ | Lịch sử đặt vé của user (filter: `status`) |
 | GET | `/bookings/:id` | ✅ | Chi tiết booking (kèm showtime, movie, seats) |
 | POST | `/bookings` | ✅ | Đặt vé — giữ ghế 10 phút |
-| PATCH | `/bookings/:id/confirm` | ✅ | Xác nhận thanh toán |
+| PATCH | `/bookings/:id/confirm` | ✅ | Xác nhận thanh toán trực tiếp |
 | PATCH | `/bookings/:id/cancel` | ✅ | Hủy booking |
 
 **Request body — đặt vé:**
@@ -295,13 +314,93 @@ GET /movies?status=now_showing&genre=Hành+động&page=1&limit=10
 }
 ```
 
-> Sau khi tạo booking, ghế được giữ trong **10 phút** (trạng thái `PENDING`). Nếu quá thời gian mà chưa `confirm`, ghế tự động trống lại — không cần cron job, logic này được xử lý trong query `findOccupiedSeatIdsByShowtimeId`.
+> Sau khi tạo booking, ghế được giữ trong **10 phút** (trạng thái `PENDING`). Nếu quá thời gian mà chưa confirm, ghế tự động trống lại — không cần cron job, xử lý trong query `findOccupiedSeatIdsByShowtimeId`.
+
+**Seat status trong sơ đồ ghế:**
+- `AVAILABLE` — trống, có thể chọn
+- `OCCUPIED` — đã đặt hoặc đang được giữ bởi PENDING còn hạn
+- `UNAVAILABLE` — ghế bị deactivate (hỏng)
+
+---
+
+### Payments
+
+| Method | Endpoint | Auth | Mô tả |
+|---|---|---|---|
+| POST | `/payments` | ✅ | Khởi tạo payment session cho booking |
+| GET | `/payments/:id` | ✅ | Xem trạng thái payment |
+| POST | `/payments/:id/confirm` | ✅ | Mock: giả lập thanh toán thành công |
+| POST | `/payments/:id/fail` | ✅ | Mock: giả lập user hủy / cổng TT lỗi |
+
+**Request body — khởi tạo payment:**
+```json
+{
+  "bookingId": 10,
+  "provider": "MOCK"
+}
+```
+
+`provider` chấp nhận: `MOCK` | `VNPAY` | `MOMO`. Mặc định là `MOCK`.
+
+**Response — khởi tạo payment:**
+```json
+{
+  "success": true,
+  "data": {
+    "id": 3,
+    "bookingId": 10,
+    "amount": 180000,
+    "status": "PENDING",
+    "provider": "MOCK",
+    "expiredAt": "2025-12-25T19:15:00.000Z",
+    "paymentUrl": "/payments/3/mock-checkout",
+    "instructions": "Gọi POST /payments/3/confirm để giả lập thanh toán thành công"
+  }
+}
+```
+
+**Payment status flow:**
+```
+PENDING → SUCCESS  (sau khi confirm)
+PENDING → FAILED   (sau khi fail, hoặc hết hạn session 15 phút)
+```
+
+> Nếu booking đã có payment `PENDING` còn hạn, gọi lại `POST /payments` sẽ trả về session cũ thay vì tạo mới.
+
+> Khi `confirm` thành công, cả **payment** (SUCCESS) và **booking** (CONFIRMED) được cập nhật trong cùng 1 database transaction để đảm bảo atomicity.
+
+> Khi `fail`, booking vẫn giữ trạng thái `PENDING` — user có thể tạo payment session mới nếu booking chưa hết hold.
+
+---
+
+### Upload
+
+| Method | Endpoint | Auth | Mô tả |
+|---|---|---|---|
+| POST | `/upload/image` | 🔐 Admin | Upload ảnh lên Cloudinary |
+
+**Request:** `multipart/form-data`, field name là `image`.
+
+Chấp nhận: `JPG`, `PNG`, `WEBP`. Tối đa **5MB**.
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "url": "https://res.cloudinary.com/your-cloud/image/upload/cinema-app/abc123.jpg",
+    "publicId": "cinema-app/abc123"
+  }
+}
+```
+
+> URL trả về có thể dùng trực tiếp làm `posterUrl` khi tạo/cập nhật phim, hoặc `imageUrl` khi tạo/cập nhật rạp.
 
 ---
 
 ## Luồng nghiệp vụ chính
 
-### Luồng đặt vé
+### Luồng đặt vé đầy đủ (với Payment)
 
 ```
 1. User xem danh sách phim đang chiếu
@@ -310,17 +409,34 @@ GET /movies?status=now_showing&genre=Hành+động&page=1&limit=10
 2. Chọn phim → xem lịch chiếu theo ngày
    GET /showtimes?movieId=1&date=2025-12-25
 
-3. Chọn suất chiếu → xem sơ đồ ghế còn trống
-   GET /showtimes/:id  (lấy roomId)
-   GET /rooms/:roomId/seats
+3. Chọn suất chiếu → xem sơ đồ ghế còn trống + giá
+   GET /showtimes/:showtimeId/seats
 
 4. Chọn ghế → đặt vé (cần đăng nhập)
-   POST /bookings
+   POST /bookings  { showtimeId, seatIds }
    → Ghế được giữ 10 phút, status = PENDING
 
-5. Thanh toán → xác nhận booking
-   PATCH /bookings/:id/confirm
-   → status = CONFIRMED, vé hợp lệ
+5. Khởi tạo payment session
+   POST /payments  { bookingId, provider: "MOCK" }
+   → Nhận paymentUrl
+
+6. Thực hiện thanh toán (mock)
+   POST /payments/:id/confirm
+   → Payment: SUCCESS, Booking: CONFIRMED (trong 1 transaction)
+```
+
+### Luồng thanh toán thất bại / thử lại
+
+```
+1. POST /payments/:id/fail
+   → Payment: FAILED, Booking vẫn PENDING (nếu còn trong hold)
+
+2. Tạo lại payment session
+   POST /payments  { bookingId }
+   → Session mới với expiredAt mới
+
+3. Thử thanh toán lại
+   POST /payments/:id/confirm
 ```
 
 ### Luồng xác thực
@@ -329,8 +445,25 @@ GET /movies?status=now_showing&genre=Hành+động&page=1&limit=10
 1. Đăng nhập → nhận accessToken (15 phút) + refreshToken (30 ngày)
 2. Mỗi request gửi kèm: Authorization: Bearer <accessToken>
 3. Khi accessToken hết hạn → dùng refreshToken để lấy accessToken mới
-   POST /auth/refresh-token
+   POST /auth/refresh-token  { refreshToken }
 4. Đăng xuất → xóa refreshToken khỏi DB
+   POST /auth/signOut  { refreshToken }
+   # Hoặc đăng xuất tất cả thiết bị:
+   POST /auth/signOut  { logoutAll: true }
+```
+
+### Luồng upload và gán ảnh
+
+```
+1. Admin upload ảnh
+   POST /upload/image  (multipart/form-data, field: image)
+   → Nhận url + publicId từ Cloudinary
+
+2. Dùng url vào khi tạo/cập nhật phim
+   POST /movies  { ..., posterUrl: "https://res.cloudinary.com/..." }
+
+3. Hoặc dùng vào khi tạo/cập nhật rạp
+   PATCH /cinemas/:id  { imageUrl: "https://res.cloudinary.com/..." }
 ```
 
 ---
@@ -354,6 +487,9 @@ showtimes (id, movie_id, room_id, start_time, end_time,
 bookings      (id, user_id, showtime_id, total_price, status,
                held_until, confirmed_at, cancelled_at, created_at)
 booking_seats (id, booking_id, seat_id, seat_label, seat_type, price)
+
+payments (id, booking_id, user_id, amount, status, provider,
+          transaction_id, expired_at, paid_at, created_at)
 ```
 
 Cascade deletes: `cinemas → rooms → seats`, `bookings → booking_seats`.
@@ -364,11 +500,15 @@ Cascade deletes: `cinemas → rooms → seats`, `bookings → booking_seats`.
 
 **`endTime` không để client truyền vào** — tính server-side từ `movie.duration + 15 phút` để đảm bảo không có suất chiếu nào bị nhập sai thời lượng, và đảm bảo kiểm tra conflict lịch chính xác.
 
-**`status` không lưu vào DB** — cả `Movie.status`, `Showtime.status` đều là computed getter tính từ timestamp. Không bao giờ bị stale, không cần cron job cập nhật.
+**`status` không lưu vào DB** — cả `Movie.status`, `Showtime.status`, `Payment.isExpired()` đều là computed getter tính từ timestamp. Không bao giờ bị stale, không cần cron job cập nhật.
 
 **Giá vé snapshot tại thời điểm đặt** — `booking_seats.price` lưu giá tại lúc tạo booking, không reference ngược về `showtimes`. Admin đổi giá sau không ảnh hưởng booking cũ.
 
 **Hold ghế không cần Redis hay cron** — `held_until` là timestamp trong DB. Query `findOccupiedSeatIdsByShowtimeId` chỉ tính ghế là "đang bị giữ" khi `status = 'PENDING' AND held_until > NOW()`. PENDING hết hạn tự động bị bỏ qua.
+
+**Payment tách khỏi Booking** — 1 booking có thể có nhiều lần thử thanh toán (FAILED rồi thử lại). Payment lưu `transactionId` từ cổng TT để đối soát. Nếu sau này cần tích hợp VNPay/Momo thật, chỉ cần thêm IPN endpoint mới ở Infrastructure layer, không đụng Application layer.
+
+**Payment + Booking update trong 1 transaction** — `ConfirmPaymentHandler` dùng `withTransaction` để đảm bảo atomicity: hoặc cả 2 đều SUCCESS/CONFIRMED, hoặc cả 2 rollback. Không có trạng thái lệch nhau.
 
 **`PATCH /:id/cancel` thay vì `DELETE`** — soft delete để giữ audit trail. Booking và showtime đã hủy vẫn cần tham chiếu được từ lịch sử.
 
