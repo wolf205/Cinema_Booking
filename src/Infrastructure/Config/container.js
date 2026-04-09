@@ -11,6 +11,9 @@ import MySQLSeatRepository from "../Http/Repositories/MySQLSeatRepository.js";
 import MySQLShowtimeRepository from "../Http/Repositories/MySQLShowtimeRepository.js";
 import MySQLBookingRepository from "../Http/Repositories/MySQLBookingRepository.js";
 import MySQLPaymentRepository from "../Http/Repositories/MySQLPaymentRepository.js";
+// Thêm Ticket Repository
+import MySQLTicketRepository from "../Http/Repositories/MySQLTicketRepository.js";
+
 // ── Handlers ──────────────────────────────────────────────────────────────────
 import RegisterHandler from "../../Application/Auth/Handler/RegisterHandler.js";
 import LoginHandler from "../../Application/Auth/Handler/LoginHandler.js";
@@ -55,22 +58,24 @@ import ConfirmPaymentHandler from "../../Application/Payment/Handler/ConfirmPaym
 import FailPaymentHandler from "../../Application/Payment/Handler/FailPaymentHandler.js";
 import GetPaymentHandler from "../../Application/Payment/Handler/GetPaymentHandler.js";
 
+// Thêm Ticket Handlers
+import IssueTicketHandler from "../../Application/Ticket/Handler/IssueTicketHandler.js";
+import GetTicketHandler from "../../Application/Ticket/Handler/GetTicketHandler.js";
+
 // ── Controllers ───────────────────────────────────────────────────────────────
 import AuthController from "../Http/Controllers/AuthController.js";
 import MovieController from "../Http/Controllers/MovieController.js";
-
 import CinemaController from "../Http/Controllers/CinemaController.js";
 import RoomController from "../Http/Controllers/RoomController.js";
 import SeatController from "../Http/Controllers/SeatController.js";
-
 import ShowtimeController from "../Http/Controllers/ShowtimeController.js";
-
 import BookingController from "../Http/Controllers/BookingController.js";
-
 import PaymentController from "../Http/Controllers/PaymentController.js";
+// Thêm Ticket Controller
+import TicketController from "../Http/Controllers/TicketController.js";
+
 // ═════════════════════════════════════════════════════════════════════════════
 // Khởi tạo theo thứ tự: Repository → Handler → Controller
-// Repository không phụ thuộc gì → Handler phụ thuộc Repository → Controller phụ thuộc Handler
 // ═════════════════════════════════════════════════════════════════════════════
 
 // ── Tầng 1: Repositories ──────────────────────────────────────────────────────
@@ -87,6 +92,10 @@ const showtimeRepository = new MySQLShowtimeRepository(pool);
 const bookingRepository = new MySQLBookingRepository(pool);
 
 const paymentRepository = new MySQLPaymentRepository(pool);
+
+// Khởi tạo Ticket Repository
+const ticketRepository = new MySQLTicketRepository(pool);
+
 // ── Tầng 2: Handlers ──────────────────────────────────────────────────────────
 const registerHandler = new RegisterHandler(userRepository);
 const loginHandler = new LoginHandler(userRepository, refreshTokenRepository);
@@ -161,13 +170,24 @@ const initiatePaymentHandler = new InitiatePaymentHandler(
   bookingRepository,
   paymentRepository,
 );
+const failPaymentHandler = new FailPaymentHandler(paymentRepository);
+const getPaymentHandler = new GetPaymentHandler(paymentRepository);
+
+// KHỞI TẠO TICKET HANDLERS TRƯỚC CONFIRM PAYMENT HANDLER
+const issueTicketHandler = new IssueTicketHandler(
+  bookingRepository,
+  ticketRepository,
+);
+const getTicketHandler = new GetTicketHandler(ticketRepository);
+
+// Cập nhật ConfirmPaymentHandler để nhận thêm issueTicketHandler
 const confirmPaymentHandler = new ConfirmPaymentHandler(
   paymentRepository,
   bookingRepository,
   showtimeRepository,
+  issueTicketHandler,
 );
-const failPaymentHandler = new FailPaymentHandler(paymentRepository);
-const getPaymentHandler = new GetPaymentHandler(paymentRepository);
+
 // ── Tầng 3: Controllers ───────────────────────────────────────────────────────
 const authController = new AuthController(
   registerHandler,
@@ -225,6 +245,9 @@ const paymentController = new PaymentController(
   getPaymentHandler,
 );
 
+// Khởi tạo Ticket Controller
+const ticketController = new TicketController(getTicketHandler);
+
 export {
   authController,
   movieController,
@@ -234,4 +257,5 @@ export {
   showtimeController,
   bookingController,
   paymentController,
+  ticketController, // Export ticketController ra ngoài
 };

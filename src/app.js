@@ -9,6 +9,7 @@ import showtimeRoutes from "./Infrastructure/Http/Routes/showtimeRoutes.js";
 import bookingRoutes from "./Infrastructure/Http/Routes/bookingRoutes.js";
 import paymentRoutes from "./Infrastructure/Http/Routes/paymentRoutes.js";
 import uploadRoutes from "./Infrastructure/Http/Routes/uploadRoutes.js";
+import ticketRoutes from "./Infrastructure/Http/Routes/ticketRoutes.js";
 
 const app = express();
 
@@ -23,6 +24,7 @@ app.use("/showtimes", showtimeRoutes);
 app.use("/bookings", bookingRoutes);
 app.use("/", bookingRoutes);
 app.use("/payments", paymentRoutes);
+app.use("/tickets", ticketRoutes);
 app.use("/upload", uploadRoutes);
 
 // Health check — test nhanh server có chạy không
