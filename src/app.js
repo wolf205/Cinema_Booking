@@ -22,7 +22,6 @@ app.use("/rooms", roomRoutes);
 app.use("/seats", seatRoutes);
 app.use("/showtimes", showtimeRoutes);
 app.use("/bookings", bookingRoutes);
-app.use("/", bookingRoutes);
 app.use("/payments", paymentRoutes);
 app.use("/tickets", ticketRoutes);
 app.use("/upload", uploadRoutes);

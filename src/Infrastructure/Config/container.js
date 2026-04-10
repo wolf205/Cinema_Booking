@@ -1,6 +1,8 @@
 // Infrastructure/Config/container.js
 import { pool } from "./database.js";
 
+import NodemailerService from "../Http/Services/NodemailerService.js";
+
 // ── Repositories ──────────────────────────────────────────────────────────────
 import MySQLUserRepository from "../Http/Repositories/MySQLUserRepository.js";
 import MySQLRefreshTokenRepository from "../Http/Repositories/MySQLRefreshTokenRepository.js";
@@ -77,6 +79,9 @@ import TicketController from "../Http/Controllers/TicketController.js";
 // ═════════════════════════════════════════════════════════════════════════════
 // Khởi tạo theo thứ tự: Repository → Handler → Controller
 // ═════════════════════════════════════════════════════════════════════════════
+
+// ── Khởi tạo Services mới ─────────────────────────────────────────────────────
+const emailService = new NodemailerService();
 
 // ── Tầng 1: Repositories ──────────────────────────────────────────────────────
 const userRepository = new MySQLUserRepository(pool);
@@ -186,6 +191,8 @@ const confirmPaymentHandler = new ConfirmPaymentHandler(
   bookingRepository,
   showtimeRepository,
   issueTicketHandler,
+  userRepository,
+  emailService,
 );
 
 // ── Tầng 3: Controllers ───────────────────────────────────────────────────────

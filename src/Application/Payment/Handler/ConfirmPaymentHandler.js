@@ -14,11 +14,15 @@ class ConfirmPaymentHandler {
     bookingRepository,
     showtimeRepository,
     issueTicketHandler,
+    userRepository,
+    emailService,
   ) {
     this.paymentRepository = paymentRepository;
     this.bookingRepository = bookingRepository;
     this.showtimeRepository = showtimeRepository;
     this.issueTicketHandler = issueTicketHandler; // Tích hợp thêm handler
+    this.userRepository = userRepository;
+    this.emailService = emailService;
   }
 
   async execute(command) {
@@ -106,6 +110,24 @@ class ConfirmPaymentHandler {
       // thì user vẫn nhận được thông báo "Thanh toán thành công", không làm crash API
       console.error(
         "[IssueTicketError] Lỗi khi phát hành vé tự động:",
+        err.message,
+      );
+    }
+
+    // ── Bước 8.5: Gửi Email thông báo (Bọc trong try-catch để API không bị crash) ──
+    try {
+      const user = await this.userRepository.findById(booking.userId);
+      if (user && user.email) {
+        await this.emailService.sendBookingConfirmation(
+          user.email.value,
+          booking.toJSON(),
+          showtime.toJSON(),
+          ticketResult ? ticketResult.ticket : null,
+        );
+      }
+    } catch (err) {
+      console.error(
+        "[SendEmailError] Lỗi khi gửi email xác nhận:",
         err.message,
       );
     }
