@@ -11,7 +11,8 @@ class MySQLUserRepository extends UserRepositoryInterface {
   // ── Tìm user theo email — dùng trong LoginHandler ─────────────────
   async findByEmail(email) {
     const [rows] = await this.pool.execute(
-      `SELECT id, name, email, password_hash, role, created_at
+      `SELECT id, name, email, password_hash, role,
+              avatar_url, phone, date_of_birth, updated_at, created_at
        FROM users
        WHERE email = ?
        LIMIT 1`,
@@ -26,7 +27,8 @@ class MySQLUserRepository extends UserRepositoryInterface {
   // ── Tìm user theo id — dùng trong authMiddleware ──────────────────
   async findById(id) {
     const [rows] = await this.pool.execute(
-      `SELECT id, name, email, password_hash, role, created_at
+      `SELECT id, name, email, password_hash, role,
+              avatar_url, phone, date_of_birth, updated_at, created_at
        FROM users
        WHERE id = ?
        LIMIT 1`,
@@ -39,8 +41,6 @@ class MySQLUserRepository extends UserRepositoryInterface {
   }
 
   // ── Kiểm tra email tồn tại — dùng trong RegisterHandler ──────────
-  // Dùng SELECT 1 thay vì SELECT * — không cần lấy data, chỉ cần biết có tồn tại không
-  // Nhẹ hơn findByEmail vì không fetch passwordHash ra ngoài không cần thiết
   async existsByEmail(email) {
     const [rows] = await this.pool.execute(
       `SELECT 1
@@ -55,40 +55,83 @@ class MySQLUserRepository extends UserRepositoryInterface {
 
   // ── Lưu user mới — dùng trong RegisterHandler ────────────────────
   async save(user) {
-    const { name, email, passwordHash, role, createdAt } = user.toPersistence();
+    const {
+      name,
+      email,
+      passwordHash,
+      role,
+      avatar_url,
+      phone,
+      date_of_birth,
+      updated_at,
+      createdAt,
+    } = user.toPersistence();
 
     const [result] = await this.pool.execute(
-      `INSERT INTO users (name, email, password_hash, role, created_at)
-       VALUES (?, ?, ?, ?, ?)`,
-      [name, email, passwordHash, role, createdAt],
+      `INSERT INTO users
+         (name, email, password_hash, role, avatar_url, phone, date_of_birth, updated_at, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        name,
+        email,
+        passwordHash,
+        role,
+        avatar_url,
+        phone,
+        date_of_birth,
+        updated_at,
+        createdAt,
+      ],
     );
 
-    // Trả về entity với id thật từ AUTO_INCREMENT
     return User.fromPersistence({
       id: result.insertId,
       name,
       email,
       passwordHash,
       role,
+      avatar_url,
+      phone,
+      date_of_birth,
+      updated_at,
       createdAt,
     });
   }
 
-  // ── Cập nhật user — dùng khi đổi tên, đổi password, promote admin ─
-  // Chỉ update các field có thể thay đổi, không cho update email và created_at
+  // ── Cập nhật user — dùng khi đổi tên, đổi password, update profile ─
   async update(user) {
-    const { name, passwordHash, role } = user.toPersistence();
+    const {
+      name,
+      passwordHash,
+      role,
+      avatar_url,
+      phone,
+      date_of_birth,
+      updated_at,
+    } = user.toPersistence();
 
     const [result] = await this.pool.execute(
       `UPDATE users
        SET name          = ?,
            password_hash = ?,
-           role          = ?
+           role          = ?,
+           avatar_url    = ?,
+           phone         = ?,
+           date_of_birth = ?,
+           updated_at    = ?
        WHERE id = ?`,
-      [name, passwordHash, role, user.id],
+      [
+        name,
+        passwordHash,
+        role,
+        avatar_url,
+        phone,
+        date_of_birth,
+        updated_at,
+        user.id,
+      ],
     );
 
-    // affectedRows = 0 nghĩa là id không tồn tại trong DB
     if (result.affectedRows === 0) {
       throw new Error(`User với id=${user.id} không tồn tại`);
     }
@@ -97,36 +140,36 @@ class MySQLUserRepository extends UserRepositoryInterface {
   }
 
   // ── Lấy danh sách user có phân trang — dùng cho trang Admin ───────
-  async findAll({ page = 1, limit = 20 }) {
-    // Tính offset từ page
-    // page=1 → offset=0, page=2 → offset=20, ...
+  async findAll({ page = 1, limit = 20, role = null }) {
     const offset = (page - 1) * limit;
+    const conditions = [];
+    const params = [];
 
-    // Query 1: lấy data của page hiện tại
+    if (role) {
+      conditions.push(`role = ?`);
+      params.push(role);
+    }
+
+    const whereClause =
+      conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+
     const [rows] = await this.pool.execute(
-      `SELECT id, name, email, role, created_at
-       FROM users
-       ORDER BY created_at DESC
-       LIMIT ? OFFSET ?`,
-      [limit, offset],
+      `SELECT id, name, email, role,
+            avatar_url, phone, date_of_birth, updated_at, created_at
+     FROM users
+     ${whereClause}
+     ORDER BY created_at DESC
+     LIMIT ? OFFSET ?`,
+      [...params, limit, offset],
     );
 
-    // Query 2: đếm tổng để tính totalPages ở tầng trên
     const [[{ total }]] = await this.pool.execute(
-      `SELECT COUNT(*) AS total FROM users`,
+      `SELECT COUNT(*) AS total FROM users ${whereClause}`,
+      params,
     );
 
     return {
-      data: rows.map((row) =>
-        User.fromPersistence({
-          id: row.id,
-          name: row.name,
-          email: row.email,
-          passwordHash: null, // không cần passwordHash ở danh sách admin
-          role: row.role,
-          createdAt: row.created_at,
-        }),
-      ),
+      data: rows.map((row) => this.#toEntity(row)),
       total: Number(total),
       page,
       limit,
@@ -135,7 +178,6 @@ class MySQLUserRepository extends UserRepositoryInterface {
   }
 
   // ── Private helper — map raw DB row → User entity ─────────────────
-  // Dùng private method để tránh lặp code mapping ở findByEmail/findById
   #toEntity(row) {
     return User.fromPersistence({
       id: row.id,
@@ -143,6 +185,10 @@ class MySQLUserRepository extends UserRepositoryInterface {
       email: row.email,
       passwordHash: row.password_hash,
       role: row.role,
+      avatar_url: row.avatar_url,
+      phone: row.phone,
+      date_of_birth: row.date_of_birth,
+      updated_at: row.updated_at,
       createdAt: row.created_at,
     });
   }

@@ -64,6 +64,12 @@ import GetPaymentHandler from "../../Application/Payment/Handler/GetPaymentHandl
 import IssueTicketHandler from "../../Application/Ticket/Handler/IssueTicketHandler.js";
 import GetTicketHandler from "../../Application/Ticket/Handler/GetTicketHandler.js";
 
+import GetProfileHandler from "../../Application/User/Handler/GetProfileHandler.js";
+import UpdateProfileHandler from "../../Application/User/Handler/UpdateProfileHandler.js";
+import ChangePasswordHandler from "../../Application/User/Handler/ChangePasswordHandler.js";
+import ListUsersHandler from "../../Application/User/Handler/ListUsersHandler.js";
+import UpdateUserRoleHandler from "../../Application/User/Handler/UpdateUserRoleHandler.js";
+
 // ── Controllers ───────────────────────────────────────────────────────────────
 import AuthController from "../Http/Controllers/AuthController.js";
 import MovieController from "../Http/Controllers/MovieController.js";
@@ -75,6 +81,7 @@ import BookingController from "../Http/Controllers/BookingController.js";
 import PaymentController from "../Http/Controllers/PaymentController.js";
 // Thêm Ticket Controller
 import TicketController from "../Http/Controllers/TicketController.js";
+import UserController from "../Http/Controllers/UserController.js";
 
 // ═════════════════════════════════════════════════════════════════════════════
 // Khởi tạo theo thứ tự: Repository → Handler → Controller
@@ -195,6 +202,12 @@ const confirmPaymentHandler = new ConfirmPaymentHandler(
   emailService,
 );
 
+const getProfileHandler = new GetProfileHandler(userRepository);
+const updateProfileHandler = new UpdateProfileHandler(userRepository);
+const changePasswordHandler = new ChangePasswordHandler(userRepository);
+const listUsersHandler = new ListUsersHandler(userRepository);
+const updateUserRoleHandler = new UpdateUserRoleHandler(userRepository);
+
 // ── Tầng 3: Controllers ───────────────────────────────────────────────────────
 const authController = new AuthController(
   registerHandler,
@@ -255,6 +268,14 @@ const paymentController = new PaymentController(
 // Khởi tạo Ticket Controller
 const ticketController = new TicketController(getTicketHandler);
 
+const userController = new UserController(
+  getProfileHandler,
+  updateProfileHandler,
+  changePasswordHandler,
+  listUsersHandler,
+  updateUserRoleHandler,
+);
+
 export {
   authController,
   movieController,
@@ -265,4 +286,5 @@ export {
   bookingController,
   paymentController,
   ticketController, // Export ticketController ra ngoài
+  userController,
 };

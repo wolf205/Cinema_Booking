@@ -35,7 +35,7 @@ class UserRepositoryInterface {
   // --- Admin / thống kê (dùng ở Ngày 19+) ---
 
   // Lấy danh sách user cho trang quản trị, có phân trang
-  async findAll({ page, limit }) {
+  async findAll({ page, limit, role }) {
     throw new Error("Not implemented");
   }
 }
