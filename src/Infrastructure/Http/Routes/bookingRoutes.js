@@ -2,6 +2,7 @@
 import express from "express";
 import { bookingController } from "../../Config/container.js";
 import authMiddleware from "../Middlewares/authMiddleware.js";
+import requireRole from "../Middlewares/roleMiddleware.js";
 
 const router = express.Router();
 
@@ -16,6 +17,10 @@ router.get("/showtimes/:showtimeId/seats", (req, res, next) =>
 router.use(authMiddleware);
 
 router.get("/", (req, res, next) => bookingController.list(req, res, next));
+
+router.get("/all", requireRole("admin"), (req, res, next) =>
+  bookingController.listAll(req, res, next),
+);
 
 router.get("/:id", (req, res, next) => bookingController.get(req, res, next));
 

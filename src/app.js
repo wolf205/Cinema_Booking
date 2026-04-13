@@ -11,6 +11,7 @@ import paymentRoutes from "./Infrastructure/Http/Routes/paymentRoutes.js";
 import uploadRoutes from "./Infrastructure/Http/Routes/uploadRoutes.js";
 import ticketRoutes from "./Infrastructure/Http/Routes/ticketRoutes.js";
 import userRoutes from "./Infrastructure/Http/Routes/userRoutes.js";
+import reportRoutes from "./Infrastructure/Http/Routes/reportRoutes.js";
 
 const app = express();
 
@@ -27,6 +28,7 @@ app.use("/payments", paymentRoutes);
 app.use("/tickets", ticketRoutes);
 app.use("/users", userRoutes);
 app.use("/upload", uploadRoutes);
+app.use("/reports", reportRoutes);
 
 // Health check — test nhanh server có chạy không
 app.get("/health", (req, res) => {

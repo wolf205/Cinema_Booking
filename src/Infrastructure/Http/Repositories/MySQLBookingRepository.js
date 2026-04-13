@@ -88,6 +88,48 @@ class MySQLBookingRepository extends BookingRepositoryInterface {
     };
   }
 
+  // ── Lấy tất cả booking (Admin) — có phân trang và filter ──────────
+  async findAll({ page = 1, limit = 10, status = null, userId = null }) {
+    const offset = (page - 1) * limit;
+    const conditions = [];
+    const params = [];
+
+    if (status) {
+      conditions.push(`status = ?`);
+      params.push(status);
+    }
+    if (userId) {
+      conditions.push(`user_id = ?`);
+      params.push(userId);
+    }
+
+    const whereClause =
+      conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+
+    const [rows] = await this.pool.execute(
+      `SELECT id, user_id, showtime_id, total_price,
+              status, held_until, confirmed_at, cancelled_at, created_at
+       FROM bookings
+       ${whereClause}
+       ORDER BY created_at DESC
+       LIMIT ? OFFSET ?`,
+      [...params, limit, offset],
+    );
+
+    const [[{ total }]] = await this.pool.execute(
+      `SELECT COUNT(*) AS total FROM bookings ${whereClause}`,
+      params,
+    );
+
+    return {
+      data: rows.map((row) => Booking.fromPersistence({ ...row, seats: [] })),
+      total: Number(total),
+      page,
+      limit,
+      totalPages: Math.ceil(Number(total) / limit),
+    };
+  }
+
   // ── Lấy seatId đang bị chiếm trong 1 showtime ─────────────────────
   // Dùng trong GetSeatMapForShowtimeHandler
   //

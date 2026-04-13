@@ -43,6 +43,14 @@ class BookingRepositoryInterface {
     throw new AppError("Not implemented", 500);
   }
 
+  /**
+   * Dùng cho Admin xem tất cả booking
+   * Trả về { data: Booking[], total, page, limit, totalPages }
+   */
+  async findAll({ page, limit, status, userId }) {
+    throw new AppError("Not implemented", 500);
+  }
+
   // ── Query phục vụ seat map ────────────────────────────────────────────
 
   /**

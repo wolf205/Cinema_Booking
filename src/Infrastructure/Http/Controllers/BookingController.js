@@ -5,6 +5,7 @@ import ConfirmBookingCommand from "../../../Application/Booking/Command/ConfirmB
 import GetBookingQuery from "../../../Application/Booking/Query/GetBookingQuery.js";
 import ListBookingsQuery from "../../../Application/Booking/Query/ListBookingsQuery.js";
 import GetSeatMapForShowtimeQuery from "../../../Application/Booking/Query/GetSeatMapForShowtimeQuery.js";
+import ListAllBookingsQuery from "../../../Application/Booking/Query/ListAllBookingsQuery.js";
 
 class BookingController {
   constructor(
@@ -14,6 +15,7 @@ class BookingController {
     getBookingHandler,
     listBookingsHandler,
     getSeatMapForShowtimeHandler,
+    listAllBookingsHandler,
   ) {
     this.createBookingHandler = createBookingHandler;
     this.cancelBookingHandler = cancelBookingHandler;
@@ -21,6 +23,7 @@ class BookingController {
     this.getBookingHandler = getBookingHandler;
     this.listBookingsHandler = listBookingsHandler;
     this.getSeatMapForShowtimeHandler = getSeatMapForShowtimeHandler;
+    this.listAllBookingsHandler = listAllBookingsHandler;
   }
 
   // GET /showtimes/:showtimeId/seats
@@ -46,6 +49,21 @@ class BookingController {
         limit: req.query.limit ? Number(req.query.limit) : undefined,
       });
       const result = await this.listBookingsHandler.execute(query);
+      res.status(200).json({ success: true, ...result });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  async listAll(req, res, next) {
+    try {
+      const query = new ListAllBookingsQuery({
+        status: req.query.status,
+        userId: req.query.userId,
+        page: req.query.page ? Number(req.query.page) : undefined,
+        limit: req.query.limit ? Number(req.query.limit) : undefined,
+      });
+      const result = await this.listAllBookingsHandler.execute(query);
       res.status(200).json({ success: true, ...result });
     } catch (err) {
       next(err);

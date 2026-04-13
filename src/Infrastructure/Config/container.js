@@ -15,6 +15,7 @@ import MySQLBookingRepository from "../Http/Repositories/MySQLBookingRepository.
 import MySQLPaymentRepository from "../Http/Repositories/MySQLPaymentRepository.js";
 // Thêm Ticket Repository
 import MySQLTicketRepository from "../Http/Repositories/MySQLTicketRepository.js";
+import MySQLReportRepository from "../Http/Repositories/MySQLReportRepository.js";
 
 // ── Handlers ──────────────────────────────────────────────────────────────────
 import RegisterHandler from "../../Application/Auth/Handler/RegisterHandler.js";
@@ -53,6 +54,7 @@ import CancelBookingHandler from "../../Application/Booking/Handler/CancelBookin
 import ConfirmBookingHandler from "../../Application/Booking/Handler/ConfirmBookingHandler.js";
 import GetBookingHandler from "../../Application/Booking/Handler/GetBookingHandler.js";
 import ListBookingsHandler from "../../Application/Booking/Handler/ListBookingsHandler.js";
+import ListAllBookingsHandler from "../../Application/Booking/Handler/ListAllBookingsHandler.js";
 import GetSeatMapForShowtimeHandler from "../../Application/Booking/Handler/GetSeatMapForShowtimeHandler.js";
 
 import InitiatePaymentHandler from "../../Application/Payment/Handler/InitiatePaymentHandler.js";
@@ -70,6 +72,11 @@ import ChangePasswordHandler from "../../Application/User/Handler/ChangePassword
 import ListUsersHandler from "../../Application/User/Handler/ListUsersHandler.js";
 import UpdateUserRoleHandler from "../../Application/User/Handler/UpdateUserRoleHandler.js";
 
+import GetDashboardOverviewHandler from "../../Application/Report/Handler/GetDashboardOverviewHandler.js";
+import GetRevenueByTimeHandler from "../../Application/Report/Handler/GetRevenueByTimeHandler.js";
+import GetRevenueByMovieHandler from "../../Application/Report/Handler/GetRevenueByMovieHandler.js";
+import GetRevenueByCinemaHandler from "../../Application/Report/Handler/GetRevenueByCinemaHandler.js";
+
 // ── Controllers ───────────────────────────────────────────────────────────────
 import AuthController from "../Http/Controllers/AuthController.js";
 import MovieController from "../Http/Controllers/MovieController.js";
@@ -82,6 +89,7 @@ import PaymentController from "../Http/Controllers/PaymentController.js";
 // Thêm Ticket Controller
 import TicketController from "../Http/Controllers/TicketController.js";
 import UserController from "../Http/Controllers/UserController.js";
+import ReportController from "../Http/Controllers/ReportController.js";
 
 // ═════════════════════════════════════════════════════════════════════════════
 // Khởi tạo theo thứ tự: Repository → Handler → Controller
@@ -107,6 +115,8 @@ const paymentRepository = new MySQLPaymentRepository(pool);
 
 // Khởi tạo Ticket Repository
 const ticketRepository = new MySQLTicketRepository(pool);
+
+const reportRepository = new MySQLReportRepository(pool);
 
 // ── Tầng 2: Handlers ──────────────────────────────────────────────────────────
 const registerHandler = new RegisterHandler(userRepository);
@@ -169,6 +179,8 @@ const getBookingHandler = new GetBookingHandler(
   showtimeRepository,
 );
 
+const listAllBookingsHandler = new ListAllBookingsHandler(bookingRepository);
+
 const listBookingsHandler = new ListBookingsHandler(bookingRepository);
 
 const cancelBookingHandler = new CancelBookingHandler(bookingRepository);
@@ -207,6 +219,15 @@ const updateProfileHandler = new UpdateProfileHandler(userRepository);
 const changePasswordHandler = new ChangePasswordHandler(userRepository);
 const listUsersHandler = new ListUsersHandler(userRepository);
 const updateUserRoleHandler = new UpdateUserRoleHandler(userRepository);
+
+const getDashboardOverviewHandler = new GetDashboardOverviewHandler(
+  reportRepository,
+);
+const getRevenueByTimeHandler = new GetRevenueByTimeHandler(reportRepository);
+const getRevenueByMovieHandler = new GetRevenueByMovieHandler(reportRepository);
+const getRevenueByCinemaHandler = new GetRevenueByCinemaHandler(
+  reportRepository,
+);
 
 // ── Tầng 3: Controllers ───────────────────────────────────────────────────────
 const authController = new AuthController(
@@ -256,6 +277,7 @@ const bookingController = new BookingController(
   getBookingHandler,
   listBookingsHandler,
   getSeatMapForShowtimeHandler,
+  listAllBookingsHandler,
 );
 
 const paymentController = new PaymentController(
@@ -276,6 +298,13 @@ const userController = new UserController(
   updateUserRoleHandler,
 );
 
+const reportController = new ReportController(
+  getDashboardOverviewHandler,
+  getRevenueByTimeHandler,
+  getRevenueByMovieHandler,
+  getRevenueByCinemaHandler,
+);
+
 export {
   authController,
   movieController,
@@ -287,4 +316,5 @@ export {
   paymentController,
   ticketController, // Export ticketController ra ngoài
   userController,
+  reportController,
 };
