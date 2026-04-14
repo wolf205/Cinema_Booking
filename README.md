@@ -25,12 +25,17 @@ REST API cho hệ thống đặt vé xem phim, xây dựng theo kiến trúc **D
 CineBooking API cung cấp đầy đủ backend cho ứng dụng đặt vé rạp chiếu phim, bao gồm:
 
 - Quản lý phim, rạp, phòng chiếu, ghế ngồi
-- Quản lý lịch chiếu (showtime) với kiểm tra conflict
+- Quản lý lịch chiếu (showtime) với kiểm tra conflict và cập nhật thông tin
 - Đặt vé, giữ ghế tạm thời (10 phút), xác nhận thanh toán
 - Payment session với mock checkout và chuẩn bị tích hợp VNPay/Momo
+- Phát hành vé điện tử (QR Code) tự động sau khi thanh toán thành công
+- Gửi email xác nhận đặt vé qua SMTP (Nodemailer)
 - Upload ảnh lên Cloudinary
 - Xác thực người dùng với JWT + Refresh Token
 - Phân quyền admin / user
+- Quản lý hồ sơ người dùng (profile, đổi mật khẩu, phân quyền)
+- Báo cáo doanh thu (tổng quan, theo thời gian, theo phim, theo rạp)
+- Rate limiting toàn cục và cho auth endpoints
 
 ---
 
@@ -60,6 +65,8 @@ Dependency injection được quản lý tập trung qua `container.js`, theo th
 | ORM/Driver | mysql2/promise |
 | Auth | JWT + bcrypt |
 | File Upload | Cloudinary + multer-storage-cloudinary |
+| Email | Nodemailer (SMTP) |
+| Rate Limiting | express-rate-limit |
 | Validation | Tự implement qua Command/Entity |
 
 ---
@@ -101,6 +108,12 @@ NODE_ENV=development
 CLOUDINARY_CLOUD_NAME=your_cloud_name
 CLOUDINARY_API_KEY=your_api_key
 CLOUDINARY_API_SECRET=your_api_secret
+
+# SMTP (cần cho gửi email xác nhận)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your_email@gmail.com
+SMTP_PASS=your_app_password
 ```
 
 ---
@@ -134,6 +147,8 @@ src/
 ├── Domain/                         # Tầng Domain — không phụ thuộc gì
 │   ├── Errors/
 │   │   └── AppError.js
+│   ├── Services/
+│   │   └── EmailServiceInterface.js
 │   ├── User/
 │   │   ├── Entity/
 │   │   │   ├── User.js
@@ -144,45 +159,130 @@ src/
 │   │       ├── UserRepositoryInterface.js
 │   │       └── RefreshTokenRepositoryInterface.js
 │   ├── Movie/
+│   │   ├── Entity/Movie.js
+│   │   └── Repository/MovieRepositoryInterface.js
 │   ├── Cinema/                     # Cinema, Room, Seat
+│   │   ├── Entity/
+│   │   │   ├── Cinema.js
+│   │   │   ├── Room.js
+│   │   │   └── Seat.js
+│   │   └── Repository/
+│   │       ├── CinemaRepositoryInterface.js
+│   │       ├── RoomRepositoryInterface.js
+│   │       └── SeatRepositoryInterface.js
 │   ├── Showtime/
-│   ├── Booking/                    # Booking, BookingSeat
-│   └── Payment/
-│       ├── Entity/
-│       │   └── Payment.js
-│       └── Repository/
-│           └── PaymentRepositoryInterface.js
+│   │   ├── Entity/Showtime.js
+│   │   └── Repository/ShowtimeRepositoryInterface.js
+│   ├── Booking/
+│   │   ├── Entity/
+│   │   │   ├── Booking.js
+│   │   │   └── BookingSeat.js
+│   │   └── Repository/BookingRepositoryInterface.js
+│   ├── Payment/
+│   │   ├── Entity/Payment.js
+│   │   └── Repository/PaymentRepositoryInterface.js
+│   ├── Ticket/
+│   │   ├── Entity/Ticket.js
+│   │   └── Repository/TicketRepositoryInterface.js
+│   └── Report/
+│       └── Repository/ReportRepositoryInterface.js
 │
 ├── Application/                    # Tầng Application — logic nghiệp vụ
 │   ├── Auth/
-│   │   ├── Command/
-│   │   └── Handler/
+│   │   ├── Command/                # RegisterCommand, LoginCommand, LogoutCommand, RefreshTokenCommand
+│   │   └── Handler/                # RegisterHandler, LoginHandler, LogoutHandler, RefreshTokenHandler
 │   ├── Movie/
+│   │   ├── Command/                # CreateMovieCommand, UpdateMovieCommand, DeleteMovieCommand
+│   │   ├── Query/                  # GetMovieQuery, ListMoviesQuery
+│   │   └── Handler/
 │   ├── Cinema/
+│   │   ├── Command/                # CreateCinemaCommand, UpdateCinemaCommand, DeleteCinemaCommand
+│   │   │                           # CreateRoomCommand, UpdateRoomCommand, DeleteRoomCommand
+│   │   │                           # UpdateSeatCommand
+│   │   ├── Query/                  # GetCinemaQuery, ListCinemasQuery, GetRoomQuery, ListRoomsQuery
+│   │   │                           # GetSeatMapQuery
+│   │   └── Handler/
 │   ├── Showtime/
+│   │   ├── Command/                # CreateShowtimeCommand, UpdateShowtimeCommand, CancelShowtimeCommand
+│   │   ├── Query/                  # GetShowtimeQuery, ListShowtimesQuery
+│   │   └── Handler/                # CreateShowtimeHandler, UpdateShowtimeHandler, CancelShowtimeHandler
+│   │                               # GetShowtimeHandler, ListShowtimesHandler
 │   ├── Booking/
-│   └── Payment/
-│       ├── Command/                # InitiatePaymentCommand, ConfirmPaymentCommand, FailPaymentCommand
-│       ├── Query/                  # GetPaymentQuery
-│       └── Handler/                # InitiatePaymentHandler, ConfirmPaymentHandler, FailPaymentHandler, GetPaymentHandler
+│   │   ├── Command/                # CreateBookingCommand, ConfirmBookingCommand, CancelBookingCommand
+│   │   ├── Query/                  # GetBookingQuery, ListBookingsQuery, ListAllBookingsQuery
+│   │   │                           # GetSeatMapForShowtimeQuery
+│   │   └── Handler/
+│   ├── Payment/
+│   │   ├── Command/                # InitiatePaymentCommand, ConfirmPaymentCommand, FailPaymentCommand
+│   │   ├── Query/                  # GetPaymentQuery
+│   │   └── Handler/                # InitiatePaymentHandler, ConfirmPaymentHandler, FailPaymentHandler
+│   │                               # GetPaymentHandler
+│   ├── Ticket/
+│   │   ├── Command/                # IssueTicketCommand
+│   │   ├── Query/                  # GetTicketQuery
+│   │   └── Handler/                # IssueTicketHandler, GetTicketHandler
+│   ├── User/
+│   │   ├── Command/                # UpdateProfileCommand, ChangePasswordCommand, UpdateUserRoleCommand
+│   │   ├── Query/                  # GetProfileQuery, ListUsersQuery
+│   │   └── Handler/                # GetProfileHandler, UpdateProfileHandler, ChangePasswordHandler
+│   │                               # ListUsersHandler, UpdateUserRoleHandler
+│   └── Report/
+│       ├── Query/                  # GetDashboardOverviewQuery, GetRevenueByTimeQuery
+│       │                           # GetRevenueByMovieQuery, GetRevenueByCinemaQuery
+│       └── Handler/                # GetDashboardOverviewHandler, GetRevenueByTimeHandler
+│                                   # GetRevenueByMovieHandler, GetRevenueByCinemaHandler
 │
 └── Infrastructure/                 # Tầng Infrastructure — kết nối ra ngoài
     ├── Config/
     │   ├── database.js
     │   ├── env.js
-    │   ├── cloudinary.js           # Cloudinary + multer config
+    │   ├── cloudinary.js
     │   └── container.js            # Dependency injection
     └── Http/
         ├── Controllers/
+        │   ├── AuthController.js
+        │   ├── MovieController.js
+        │   ├── CinemaController.js
+        │   ├── RoomController.js
+        │   ├── SeatController.js
+        │   ├── ShowtimeController.js
+        │   ├── BookingController.js
+        │   ├── PaymentController.js
+        │   ├── TicketController.js
+        │   ├── UserController.js
+        │   ├── ReportController.js
         │   └── UploadController.js
         ├── Middlewares/
         │   ├── authMiddleware.js
         │   ├── roleMiddleware.js
-        │   └── errorMiddleware.js
+        │   ├── errorMiddleware.js
+        │   └── rateLimitMiddleware.js
         ├── Repositories/
-        │   └── MySQLPaymentRepository.js
+        │   ├── MySQLUserRepository.js
+        │   ├── MySQLRefreshTokenRepository.js
+        │   ├── MySQLMovieRepository.js
+        │   ├── MySQLCinemaRepository.js
+        │   ├── MySQLRoomRepository.js
+        │   ├── MySQLSeatRepository.js
+        │   ├── MySQLShowtimeRepository.js
+        │   ├── MySQLBookingRepository.js
+        │   ├── MySQLPaymentRepository.js
+        │   ├── MySQLTicketRepository.js
+        │   └── MySQLReportRepository.js
+        ├── Services/
+        │   └── NodemailerService.js
         └── Routes/
+            ├── authRoutes.js
+            ├── movieRoutes.js
+            ├── cinemaRoutes.js
+            ├── roomRoutes.js
+            ├── seatRoutes.js
+            ├── showtimeRoutes.js
+            ├── bookingRoutes.js
             ├── paymentRoutes.js
+            ├── ticketRoutes.js
+            ├── userRoutes.js
+            ├── reportRoutes.js
             └── uploadRoutes.js
 ```
 
@@ -198,6 +298,8 @@ src/
 | POST | `/auth/signIn` | — | Đăng nhập, nhận JWT + refresh token |
 | POST | `/auth/signOut` | ✅ | Đăng xuất (xóa refresh token) |
 | POST | `/auth/refresh-token` | — | Làm mới access token |
+
+> Các endpoint `/signUp` và `/signIn` được bảo vệ bởi rate limit: tối đa **10 lần / phút**.
 
 **Request body — signIn:**
 ```json
@@ -228,7 +330,7 @@ src/
 | GET | `/movies` | — | Danh sách phim (filter: `genre`, `status`, `page`, `limit`) |
 | GET | `/movies/:id` | — | Chi tiết phim |
 | POST | `/movies` | 🔐 Admin | Thêm phim mới |
-| PATCH | `/movies/:id` | 🔐 Admin | Cập nhật phim |
+| PATCH | `/movies/:id` | 🔐 Admin | Cập nhật phim (partial update) |
 | DELETE | `/movies/:id` | 🔐 Admin | Xóa phim |
 
 **Filter ví dụ:**
@@ -271,6 +373,7 @@ GET /movies?status=now_showing&genre=Hành+động&page=1&limit=10
 | GET | `/showtimes` | — | Danh sách suất chiếu (filter: `movieId`, `cinemaId`, `date`, `status`) |
 | GET | `/showtimes/:id` | — | Chi tiết suất chiếu (kèm movie, room, cinema) |
 | POST | `/showtimes` | 🔐 Admin | Tạo suất chiếu mới |
+| PATCH | `/showtimes/:id` | 🔐 Admin | Cập nhật suất chiếu (roomId, startTime, giá vé) |
 | PATCH | `/showtimes/:id/cancel` | 🔐 Admin | Hủy suất chiếu |
 
 **Request body — tạo suất chiếu:**
@@ -287,6 +390,8 @@ GET /movies?status=now_showing&genre=Hành+động&page=1&limit=10
 
 > `endTime` được tính tự động: `startTime + movie.duration + 15 phút buffer`. Client không truyền `endTime`.
 
+**Cập nhật suất chiếu** chỉ được phép khi suất chiếu **chưa có bất kỳ vé nào được đặt** (PENDING hoặc CONFIRMED). Nếu đã có vé, API trả về lỗi `409 Conflict`.
+
 **Status suất chiếu** (tính động):
 - `SCHEDULED` — chưa bắt đầu
 - `ONGOING` — đang chiếu
@@ -299,8 +404,9 @@ GET /movies?status=now_showing&genre=Hành+động&page=1&limit=10
 
 | Method | Endpoint | Auth | Mô tả |
 |---|---|---|---|
-| GET | `/showtimes/:showtimeId/seats` | — | Sơ đồ ghế theo suất chiếu (kèm trạng thái + giá) |
+| GET | `/bookings/showtimes/:showtimeId/seats` | — | Sơ đồ ghế theo suất chiếu (kèm trạng thái + giá) |
 | GET | `/bookings` | ✅ | Lịch sử đặt vé của user (filter: `status`) |
+| GET | `/bookings/all` | 🔐 Admin | Tất cả booking (filter: `status`, `userId`) |
 | GET | `/bookings/:id` | ✅ | Chi tiết booking (kèm showtime, movie, seats) |
 | POST | `/bookings` | ✅ | Đặt vé — giữ ghế 10 phút |
 | PATCH | `/bookings/:id/confirm` | ✅ | Xác nhận thanh toán trực tiếp |
@@ -315,6 +421,8 @@ GET /movies?status=now_showing&genre=Hành+động&page=1&limit=10
 ```
 
 > Sau khi tạo booking, ghế được giữ trong **10 phút** (trạng thái `PENDING`). Nếu quá thời gian mà chưa confirm, ghế tự động trống lại — không cần cron job, xử lý trong query `findOccupiedSeatIdsByShowtimeId`.
+
+> Mỗi booking tối đa **8 ghế**.
 
 **Seat status trong sơ đồ ghế:**
 - `AVAILABLE` — trống, có thể chọn
@@ -367,9 +475,80 @@ PENDING → FAILED   (sau khi fail, hoặc hết hạn session 15 phút)
 
 > Nếu booking đã có payment `PENDING` còn hạn, gọi lại `POST /payments` sẽ trả về session cũ thay vì tạo mới.
 
-> Khi `confirm` thành công, cả **payment** (SUCCESS) và **booking** (CONFIRMED) được cập nhật trong cùng 1 database transaction để đảm bảo atomicity.
+> Khi `confirm` thành công: **payment** (SUCCESS) + **booking** (CONFIRMED) được cập nhật trong cùng 1 database transaction, **vé điện tử** được phát hành tự động, và **email xác nhận** được gửi tới user.
 
 > Khi `fail`, booking vẫn giữ trạng thái `PENDING` — user có thể tạo payment session mới nếu booking chưa hết hold.
+
+---
+
+### Tickets
+
+| Method | Endpoint | Auth | Mô tả |
+|---|---|---|---|
+| GET | `/tickets/booking/:bookingId` | ✅ | Lấy vé điện tử theo bookingId |
+
+> Vé điện tử được **tự động phát hành** ngay sau khi payment confirm thành công — không cần gọi endpoint riêng để tạo vé.
+
+> API trả về `qrCode` dạng chuỗi UUID. Frontend tự render thành hình ảnh QR bằng thư viện phù hợp.
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "id": 1,
+    "bookingId": 10,
+    "userId": 3,
+    "showtimeId": 5,
+    "qrCode": "a1b2c3d4-e5f6-...",
+    "isUsed": false,
+    "usedAt": null,
+    "issuedAt": "2025-12-25T19:05:00.000Z"
+  }
+}
+```
+
+---
+
+### Users
+
+| Method | Endpoint | Auth | Mô tả |
+|---|---|---|---|
+| GET | `/users/me` | ✅ | Xem hồ sơ cá nhân |
+| PATCH | `/users/me` | ✅ | Cập nhật hồ sơ (name, phone, dateOfBirth, avatarUrl) |
+| PATCH | `/users/me/password` | ✅ | Đổi mật khẩu |
+| GET | `/users` | 🔐 Admin | Danh sách user (filter: `role`) |
+| PATCH | `/users/:id/role` | 🔐 Admin | Cập nhật role (user ↔ admin) |
+
+> Admin không thể tự hạ role của chính mình.
+
+---
+
+### Reports
+
+| Method | Endpoint | Auth | Mô tả |
+|---|---|---|---|
+| GET | `/reports/overview` | 🔐 Admin | Tổng quan: tổng doanh thu, tổng vé, phim đang chiếu |
+| GET | `/reports/revenue/time` | 🔐 Admin | Doanh thu theo ngày/tháng (`groupBy=day\|month`) |
+| GET | `/reports/revenue/movies` | 🔐 Admin | Doanh thu theo từng phim |
+| GET | `/reports/revenue/cinemas` | 🔐 Admin | Doanh thu theo từng rạp |
+
+**Query params chung cho revenue endpoints:**
+```
+?startDate=2025-01-01&endDate=2025-12-31
+```
+
+**Response — overview:**
+```json
+{
+  "success": true,
+  "data": {
+    "totalRevenue": 15000000,
+    "totalBookings": 120,
+    "activeMovies": 5
+  }
+}
+```
 
 ---
 
@@ -400,7 +579,7 @@ Chấp nhận: `JPG`, `PNG`, `WEBP`. Tối đa **5MB**.
 
 ## Luồng nghiệp vụ chính
 
-### Luồng đặt vé đầy đủ (với Payment)
+### Luồng đặt vé đầy đủ (với Payment + Ticket + Email)
 
 ```
 1. User xem danh sách phim đang chiếu
@@ -410,7 +589,7 @@ Chấp nhận: `JPG`, `PNG`, `WEBP`. Tối đa **5MB**.
    GET /showtimes?movieId=1&date=2025-12-25
 
 3. Chọn suất chiếu → xem sơ đồ ghế còn trống + giá
-   GET /showtimes/:showtimeId/seats
+   GET /bookings/showtimes/:showtimeId/seats
 
 4. Chọn ghế → đặt vé (cần đăng nhập)
    POST /bookings  { showtimeId, seatIds }
@@ -422,7 +601,10 @@ Chấp nhận: `JPG`, `PNG`, `WEBP`. Tối đa **5MB**.
 
 6. Thực hiện thanh toán (mock)
    POST /payments/:id/confirm
-   → Payment: SUCCESS, Booking: CONFIRMED (trong 1 transaction)
+   → Payment: SUCCESS
+   → Booking: CONFIRMED     (trong 1 transaction)
+   → Ticket: tự động phát hành (qrCode sinh tự động)
+   → Email: gửi xác nhận tới địa chỉ email của user
 ```
 
 ### Luồng thanh toán thất bại / thử lại
@@ -466,12 +648,39 @@ Chấp nhận: `JPG`, `PNG`, `WEBP`. Tối đa **5MB**.
    PATCH /cinemas/:id  { imageUrl: "https://res.cloudinary.com/..." }
 ```
 
+### Luồng cập nhật suất chiếu
+
+```
+1. Kiểm tra suất chiếu chưa có vé nào
+2. Admin cập nhật thông tin
+   PATCH /showtimes/:id  { roomId?, startTime?, basePrice?, vipPrice?, couplePrice? }
+   → Tự động tính lại endTime nếu startTime thay đổi
+   → Kiểm tra conflict lịch phòng (bỏ qua chính suất chiếu đang update)
+   → Validate giá: vipPrice >= basePrice, couplePrice >= basePrice
+```
+
+### Luồng báo cáo (Admin)
+
+```
+1. Xem tổng quan dashboard
+   GET /reports/overview
+
+2. Xem doanh thu theo tháng trong Q4 2025
+   GET /reports/revenue/time?groupBy=month&startDate=2025-10-01&endDate=2025-12-31
+
+3. Xem phim nào đang dẫn đầu doanh thu
+   GET /reports/revenue/movies?startDate=2025-01-01
+
+4. Xem rạp nào có doanh thu cao nhất
+   GET /reports/revenue/cinemas
+```
+
 ---
 
 ## Database Schema
 
 ```sql
-users (id, name, email, password_hash, role, created_at)
+users (id, name, email, password_hash, role, avatar_url, phone, date_of_birth, updated_at, created_at)
 refresh_tokens (id, user_id, token, expires_at, created_at)
 
 movies (id, title, duration, genres, directors, release_date, end_date,
@@ -490,6 +699,9 @@ booking_seats (id, booking_id, seat_id, seat_label, seat_type, price)
 
 payments (id, booking_id, user_id, amount, status, provider,
           transaction_id, expired_at, paid_at, created_at)
+
+tickets (id, booking_id, user_id, showtime_id, qr_code,
+         is_used, used_at, issued_at)
 ```
 
 Cascade deletes: `cinemas → rooms → seats`, `bookings → booking_seats`.
@@ -510,6 +722,14 @@ Cascade deletes: `cinemas → rooms → seats`, `bookings → booking_seats`.
 
 **Payment + Booking update trong 1 transaction** — `ConfirmPaymentHandler` dùng `withTransaction` để đảm bảo atomicity: hoặc cả 2 đều SUCCESS/CONFIRMED, hoặc cả 2 rollback. Không có trạng thái lệch nhau.
 
+**Vé điện tử phát hành tự động** — `IssueTicketHandler` được gọi bên trong `ConfirmPaymentHandler` ngay sau khi transaction thành công. Nếu lỗi khi phát hành vé (mất mạng DB cục bộ...), API vẫn trả về "Thanh toán thành công" — không làm crash toàn bộ luồng. User có thể gọi `GET /tickets/booking/:id` sau đó để lấy lại vé.
+
+**Email gửi bất đồng bộ trong try-catch** — lỗi SMTP không làm hỏng luồng thanh toán. Email failure được log ra console và bỏ qua.
+
+**Cập nhật suất chiếu chặn khi có vé** — `UpdateShowtimeHandler` kiểm tra `hasBookings()` trước khi cho phép sửa. Nếu đã có vé PENDING hoặc CONFIRMED, trả về lỗi `409` để bảo vệ tính toàn vẹn dữ liệu.
+
 **`PATCH /:id/cancel` thay vì `DELETE`** — soft delete để giữ audit trail. Booking và showtime đã hủy vẫn cần tham chiếu được từ lịch sử.
 
-**Conflict lịch chiếu** — dùng overlap condition chuẩn: `startTime_mới < end_time_cũ AND endTime_mới > start_time_cũ`, chỉ kiểm tra suất chưa hủy (`cancelled_at IS NULL`).
+**Conflict lịch chiếu** — dùng overlap condition chuẩn: `startTime_mới < end_time_cũ AND endTime_mới > start_time_cũ`, chỉ kiểm tra suất chưa hủy (`cancelled_at IS NULL`). Khi update showtime, bỏ qua chính suất chiếu đang được sửa (`excludeId`).
+
+**Rate limiting 2 tầng** — `globalLimiter` (100 req / 15 phút) áp dụng toàn API; `authLimiter` (10 req / phút) chỉ áp dụng cho `/signUp` và `/signIn` để chống brute-force.
