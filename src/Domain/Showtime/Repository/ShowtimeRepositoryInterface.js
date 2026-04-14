@@ -79,12 +79,33 @@ class ShowtimeRepositoryInterface {
     throw new AppError("Not implemented", 500);
   }
 
+  /**
+   * Cập nhật thông tin chi tiết của suất chiếu (phòng, giờ chiếu, giá vé)
+   * @param {Showtime} showtime - Đối tượng Showtime với các dữ liệu mới
+   * @returns {Promise<Showtime>}
+   */
+  async updateDetails(showtime) {
+    throw new AppError("Not implemented", 500);
+  }
+
   // ── Kiểm tra tồn tại ─────────────────────────────────────────────────
 
   /**
    * Dùng trong CancelShowtimeHandler — kiểm tra nhẹ, không fetch toàn bộ row.
    */
   async existsById(id) {
+    throw new AppError("Not implemented", 500);
+  }
+
+  // ── Kiểm tra ràng buộc nghiệp vụ ─────────────────────────────────────
+
+  /**
+   * Kiểm tra xem suất chiếu đã có bất kỳ vé nào được đặt chưa (PENDING hoặc CONFIRMED).
+   * Dùng trong UpdateShowtimeHandler để chặn việc đổi giờ/giá khi đã có người mua.
+   * * @param {number} id - ID của suất chiếu
+   * @returns {Promise<boolean>}
+   */
+  async hasBookings(id) {
     throw new AppError("Not implemented", 500);
   }
 }

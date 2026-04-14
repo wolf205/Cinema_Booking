@@ -48,6 +48,7 @@ import CreateShowtimeHandler from "../../Application/Showtime/Handler/CreateShow
 import CancelShowtimeHandler from "../../Application/Showtime/Handler/CancelShowtimeHandler.js";
 import GetShowtimeHandler from "../../Application/Showtime/Handler/GetShowtimeHandler.js";
 import ListShowtimesHandler from "../../Application/Showtime/Handler/ListShowtimesHandler.js";
+import UpdateShowtimeHandler from "../../Application/Showtime/Handler/UpdateShowtimeHandler.js";
 
 import CreateBookingHandler from "../../Application/Booking/Handler/CreateBookingHandler.js";
 import CancelBookingHandler from "../../Application/Booking/Handler/CancelBookingHandler.js";
@@ -160,6 +161,11 @@ const createShowtimeHandler = new CreateShowtimeHandler(
 const cancelShowtimeHandler = new CancelShowtimeHandler(showtimeRepository);
 const getShowtimeHandler = new GetShowtimeHandler(showtimeRepository);
 const listShowtimesHandler = new ListShowtimesHandler(showtimeRepository);
+const updateShowtimeHandler = new UpdateShowtimeHandler(
+  showtimeRepository,
+  movieRepository,
+  roomRepository,
+);
 
 const getSeatMapForShowtimeHandler = new GetSeatMapForShowtimeHandler(
   showtimeRepository,
@@ -268,6 +274,7 @@ const showtimeController = new ShowtimeController(
   cancelShowtimeHandler,
   getShowtimeHandler,
   listShowtimesHandler,
+  updateShowtimeHandler,
 );
 
 const bookingController = new BookingController(

@@ -3,6 +3,7 @@ import CreateShowtimeCommand from "../../../Application/Showtime/Command/CreateS
 import CancelShowtimeCommand from "../../../Application/Showtime/Command/CancelShowtimeCommand.js";
 import GetShowtimeQuery from "../../../Application/Showtime/Query/GetShowtimeQuery.js";
 import ListShowtimesQuery from "../../../Application/Showtime/Query/ListShowtimesQuery.js";
+import UpdateShowtimeCommand from "../../../Application/Showtime/Command/UpdateShowtimeCommand.js";
 
 class ShowtimeController {
   constructor(
@@ -10,11 +11,13 @@ class ShowtimeController {
     cancelShowtimeHandler,
     getShowtimeHandler,
     listShowtimesHandler,
+    updateShowtimeHandler,
   ) {
     this.createShowtimeHandler = createShowtimeHandler;
     this.cancelShowtimeHandler = cancelShowtimeHandler;
     this.getShowtimeHandler = getShowtimeHandler;
     this.listShowtimesHandler = listShowtimesHandler;
+    this.updateShowtimeHandler = updateShowtimeHandler;
   }
 
   // GET /showtimes
@@ -70,6 +73,31 @@ class ShowtimeController {
       res.status(200).json({ success: true, data: result });
     } catch (err) {
       next(err);
+    }
+  }
+
+  /**
+   * Cập nhật thông tin suất chiếu
+   */
+  async update(req, res, next) {
+    try {
+      // Khởi tạo Command với ID từ params và dữ liệu từ body
+      const command = new UpdateShowtimeCommand({
+        id: req.params.id,
+        roomId: req.body.roomId,
+        startTime: req.body.startTime,
+        basePrice: req.body.basePrice,
+        vipPrice: req.body.vipPrice,
+        couplePrice: req.body.couplePrice,
+      });
+
+      // Chạy Handler và nhận kết quả
+      const result = await this.updateShowtimeHandler.execute(command);
+
+      // Trả về JSON cho client
+      res.status(200).json(result);
+    } catch (error) {
+      next(error); // Chuyển lỗi cho Error Middleware xử lý
     }
   }
 }

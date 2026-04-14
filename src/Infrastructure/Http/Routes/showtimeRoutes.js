@@ -25,4 +25,8 @@ router.patch(
   (req, res, next) => showtimeController.cancel(req, res, next),
 );
 
+router.patch("/:id", authMiddleware, requireRole("admin"), (req, res, next) =>
+  showtimeController.update(req, res, next),
+);
+
 export default router;

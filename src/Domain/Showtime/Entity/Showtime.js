@@ -127,6 +127,42 @@ class Showtime {
     this.cancelledAt = new Date();
   }
 
+  /** * Cập nhật thông tin suất chiếu
+   * Chỉ được phép cập nhật khi suất chiếu chưa bắt đầu và chưa bị huỷ
+   */
+  updateDetails({
+    roomId,
+    startTime,
+    endTime,
+    basePrice,
+    vipPrice,
+    couplePrice,
+  }) {
+    if (this.status !== "SCHEDULED") {
+      throw new Error(
+        `Không thể cập nhật suất chiếu đang ở trạng thái "${this.status}"`,
+      );
+    }
+
+    // Gán các giá trị mới nếu có truyền vào
+    if (roomId !== undefined) this.roomId = roomId;
+    if (basePrice !== undefined) this.basePrice = basePrice;
+    if (vipPrice !== undefined) this.vipPrice = vipPrice;
+    if (couplePrice !== undefined) this.couplePrice = couplePrice;
+
+    if (startTime !== undefined) {
+      this.startTime =
+        startTime instanceof Date ? startTime : new Date(startTime);
+    }
+    if (endTime !== undefined) {
+      this.endTime = endTime instanceof Date ? endTime : new Date(endTime);
+    }
+
+    // Chạy lại hàm validate nội bộ để đảm bảo dữ liệu mới vẫn tuân thủ
+    // các rule cơ bản (vd: giá >= 0, startTime < endTime...)
+    this.#validate();
+  }
+
   // ── Factory methods ──────────────────────────────────────────────────
 
   /**

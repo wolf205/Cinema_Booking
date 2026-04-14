@@ -284,6 +284,67 @@ class MySQLShowtimeRepository extends ShowtimeRepositoryInterface {
     return rows.length > 0;
   }
 
+  // =====================================================================
+  // CÁC HÀM PHỤC VỤ CHO UPDATE SHOWTIME
+  // =====================================================================
+
+  /**
+   * Kiểm tra xem suất chiếu đã có vé nào được đặt (chưa bị huỷ) hay không
+   * @param {number} showtimeId
+   * @returns {Promise<boolean>}
+   */
+  async hasBookings(showtimeId) {
+    // Chỉ check những booking không bị huỷ (CANCELLED)
+    const query = `
+      SELECT 1 
+      FROM bookings 
+      WHERE showtime_id = ? AND status != 'CANCELLED'
+      LIMIT 1
+    `;
+    const [rows] = await this.pool.query(query, [showtimeId]);
+    return rows.length > 0;
+  }
+
+  /**
+   * Cập nhật các trường chi tiết của suất chiếu vào DB
+   * @param {Showtime} showtime
+   * @returns {Promise<Showtime>}
+   */
+  async updateDetails(showtime) {
+    const query = `
+      UPDATE showtimes 
+      SET 
+        room_id = ?, 
+        start_time = ?, 
+        end_time = ?, 
+        base_price = ?, 
+        vip_price = ?, 
+        couple_price = ?
+      WHERE id = ? AND cancelled_at IS NULL
+    `;
+
+    const values = [
+      showtime.roomId,
+      showtime.startTime, // Object Date, driver mysql2 sẽ tự map
+      showtime.endTime,
+      showtime.basePrice,
+      showtime.vipPrice,
+      showtime.couplePrice,
+      showtime.id,
+    ];
+
+    const [result] = await this.pool.query(query, values);
+
+    // Đảm bảo là có dòng bị tác động (nghĩa là suất chiếu tồn tại và chưa bị huỷ)
+    if (result.affectedRows === 0) {
+      throw new Error(
+        "Không tìm thấy suất chiếu hoặc suất chiếu đã bị huỷ từ trước.",
+      );
+    }
+
+    return showtime;
+  }
+
   // ── Private helpers ───────────────────────────────────────────────
 
   // Format Date object → "YYYY-MM-DD" cho MySQL DATE comparison
