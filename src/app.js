@@ -12,11 +12,13 @@ import uploadRoutes from "./Infrastructure/Http/Routes/uploadRoutes.js";
 import ticketRoutes from "./Infrastructure/Http/Routes/ticketRoutes.js";
 import userRoutes from "./Infrastructure/Http/Routes/userRoutes.js";
 import reportRoutes from "./Infrastructure/Http/Routes/reportRoutes.js";
+import { globalLimiter } from "./Infrastructure/Http/Middlewares/rateLimitMiddleware.js";
 
 const app = express();
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(globalLimiter);
 app.use("/auth", authRoutes);
 app.use("/movies", movieRoutes);
 app.use("/cinemas", cinemaRoutes);

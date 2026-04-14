@@ -1,14 +1,15 @@
 import express, { Router } from "express";
 import { authController } from "../../Config/container.js";
 import authMiddleware from "../Middlewares/authMiddleware.js";
+import { authLimiter } from "../Middlewares/rateLimitMiddleware.js";
 
 const router = express.Router();
 
-router.post("/signUp", (req, res, next) =>
+router.post("/signUp", authLimiter, (req, res, next) =>
   authController.register(req, res, next),
 );
 
-router.post("/signIn", (req, res, next) =>
+router.post("/signIn", authLimiter, (req, res, next) =>
   authController.login(req, res, next),
 );
 
