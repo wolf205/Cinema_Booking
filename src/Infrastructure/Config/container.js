@@ -16,6 +16,7 @@ import MySQLPaymentRepository from "../Http/Repositories/MySQLPaymentRepository.
 // Thêm Ticket Repository
 import MySQLTicketRepository from "../Http/Repositories/MySQLTicketRepository.js";
 import MySQLReportRepository from "../Http/Repositories/MySQLReportRepository.js";
+import MySQLComboRepository from "../Http/Repositories/MySQLComboRepository.js";
 
 // ── Handlers ──────────────────────────────────────────────────────────────────
 import RegisterHandler from "../../Application/Auth/Handler/RegisterHandler.js";
@@ -78,6 +79,12 @@ import GetRevenueByTimeHandler from "../../Application/Report/Handler/GetRevenue
 import GetRevenueByMovieHandler from "../../Application/Report/Handler/GetRevenueByMovieHandler.js";
 import GetRevenueByCinemaHandler from "../../Application/Report/Handler/GetRevenueByCinemaHandler.js";
 
+import CreateComboHandler from "../../Application/Combo/Handler/CreateComboHandler.js";
+import UpdateComboHandler from "../../Application/Combo/Handler/UpdateComboHandler.js";
+import DeleteComboHandler from "../../Application/Combo/Handler/DeleteComboHandler.js";
+import GetComboHandler from "../../Application/Combo/Handler/GetComboHandler.js";
+import ListCombosHandler from "../../Application/Combo/Handler/ListCombosHandler.js";
+
 // ── Controllers ───────────────────────────────────────────────────────────────
 import AuthController from "../Http/Controllers/AuthController.js";
 import MovieController from "../Http/Controllers/MovieController.js";
@@ -91,6 +98,7 @@ import PaymentController from "../Http/Controllers/PaymentController.js";
 import TicketController from "../Http/Controllers/TicketController.js";
 import UserController from "../Http/Controllers/UserController.js";
 import ReportController from "../Http/Controllers/ReportController.js";
+import ComboController from "../Http/Controllers/ComboController.js";
 
 // ═════════════════════════════════════════════════════════════════════════════
 // Khởi tạo theo thứ tự: Repository → Handler → Controller
@@ -118,6 +126,8 @@ const paymentRepository = new MySQLPaymentRepository(pool);
 const ticketRepository = new MySQLTicketRepository(pool);
 
 const reportRepository = new MySQLReportRepository(pool);
+
+const comboRepository = new MySQLComboRepository(pool);
 
 // ── Tầng 2: Handlers ──────────────────────────────────────────────────────────
 const registerHandler = new RegisterHandler(userRepository);
@@ -178,6 +188,7 @@ const createBookingHandler = new CreateBookingHandler(
   showtimeRepository,
   seatRepository,
   bookingRepository,
+  comboRepository,
 );
 
 const getBookingHandler = new GetBookingHandler(
@@ -234,6 +245,12 @@ const getRevenueByMovieHandler = new GetRevenueByMovieHandler(reportRepository);
 const getRevenueByCinemaHandler = new GetRevenueByCinemaHandler(
   reportRepository,
 );
+
+const createComboHandler = new CreateComboHandler(comboRepository);
+const updateComboHandler = new UpdateComboHandler(comboRepository);
+const deleteComboHandler = new DeleteComboHandler(comboRepository);
+const getComboHandler = new GetComboHandler(comboRepository);
+const listCombosHandler = new ListCombosHandler(comboRepository);
 
 // ── Tầng 3: Controllers ───────────────────────────────────────────────────────
 const authController = new AuthController(
@@ -312,6 +329,14 @@ const reportController = new ReportController(
   getRevenueByCinemaHandler,
 );
 
+const comboController = new ComboController(
+  createComboHandler,
+  updateComboHandler,
+  deleteComboHandler,
+  getComboHandler,
+  listCombosHandler,
+);
+
 export {
   authController,
   movieController,
@@ -324,4 +349,5 @@ export {
   ticketController, // Export ticketController ra ngoài
   userController,
   reportController,
+  comboController,
 };

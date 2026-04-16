@@ -2,21 +2,29 @@
 import AppError from "../../../Domain/Errors/AppError.js";
 import Booking from "../../../Domain/Booking/Entity/Booking.js";
 import BookingSeat from "../../../Domain/Booking/Entity/BookingSeat.js";
+import BookingCombo from "../../../Domain/Booking/Entity/BookingCombo.js";
 
 class CreateBookingHandler {
   /**
    * @param {import('../../../Domain/Showtime/Repository/ShowtimeRepositoryInterface.js').default}  showtimeRepository
    * @param {import('../../../Domain/Cinema/Repository/SeatRepositoryInterface.js').default}        seatRepository
    * @param {import('../../../Domain/Booking/Repository/BookingRepositoryInterface.js').default}    bookingRepository
+   * @param {import('../../../Domain/Combo/Repository/ComboRepositoryInterface.js').default}      comboRepository
    */
-  constructor(showtimeRepository, seatRepository, bookingRepository) {
+  constructor(
+    showtimeRepository,
+    seatRepository,
+    bookingRepository,
+    comboRepository,
+  ) {
     this.showtimeRepository = showtimeRepository;
     this.seatRepository = seatRepository;
     this.bookingRepository = bookingRepository;
+    this.comboRepository = comboRepository;
   }
 
   async execute(command) {
-    const { userId, showtimeId, seatIds } = command;
+    const { userId, showtimeId, seatIds, comboItems } = command;
 
     // ── Bước 1: Verify showtime tồn tại và còn đặt được ──────────────
     const showtime = await this.showtimeRepository.findById(showtimeId);
@@ -90,7 +98,34 @@ class CreateBookingHandler {
       }),
     );
 
-    const totalPrice = bookingSeats.reduce((sum, s) => sum + s.price, 0);
+    let totalPrice = bookingSeats.reduce((sum, s) => sum + s.price, 0);
+
+    // ── Bước 5.5: Xử lý Combo (Mới) ──
+    const bookingCombos = [];
+    if (comboItems.length > 0) {
+      const comboIds = comboItems.map((i) => i.comboId);
+      const foundCombos = await this.comboRepository.findByIds(comboIds);
+
+      if (foundCombos.length !== new Set(comboIds).size) {
+        throw new AppError("Một số combo không tồn tại", 422);
+      }
+
+      if (foundCombos.some((c) => !c.isActive)) {
+        throw new AppError("Có combo hiện đang ngừng kinh doanh", 422);
+      }
+
+      comboItems.forEach((item) => {
+        const combo = foundCombos.find((c) => c.id === item.comboId);
+        const bCombo = BookingCombo.create({
+          comboId: combo.id,
+          comboName: combo.name,
+          quantity: item.quantity,
+          price: combo.price,
+        });
+        bookingCombos.push(bCombo);
+        totalPrice += bCombo.price * bCombo.quantity;
+      });
+    }
 
     // ── Bước 6: Tạo Booking entity ────────────────────────────────────
     // Booking.create() tự tính heldUntil = now + 10 phút
@@ -100,6 +135,7 @@ class CreateBookingHandler {
         userId,
         showtimeId,
         seats: bookingSeats,
+        combos: bookingCombos,
         totalPrice,
       });
     } catch (err) {

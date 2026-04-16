@@ -2,7 +2,7 @@
 import AppError from "../../../Domain/Errors/AppError.js";
 
 class CreateBookingCommand {
-  constructor({ userId, showtimeId, seatIds }) {
+  constructor({ userId, showtimeId, seatIds, comboItems }) {
     // ── userId ────────────────────────────────────────────────────────
     if (!userId || !Number.isInteger(Number(userId)) || Number(userId) <= 0) {
       throw new AppError(
@@ -47,9 +47,22 @@ class CreateBookingCommand {
       throw new AppError(`Mỗi lần đặt tối đa ${MAX_SEATS} ghế`, 400);
     }
 
+    // Validate comboItems: [{ comboId, quantity }]
+    if (comboItems !== undefined) {
+      if (!Array.isArray(comboItems)) {
+        throw new AppError("comboItems phải là một mảng", 400);
+      }
+      comboItems.forEach((item) => {
+        if (!item.comboId || !item.quantity || item.quantity <= 0) {
+          throw new AppError("Mỗi combo phải có comboId và quantity > 0", 400);
+        }
+      });
+    }
+
     this.userId = Number(userId);
     this.showtimeId = Number(showtimeId);
     this.seatIds = [...uniqueIds]; // đã convert sang Number
+    this.comboItems = comboItems ?? [];
   }
 }
 

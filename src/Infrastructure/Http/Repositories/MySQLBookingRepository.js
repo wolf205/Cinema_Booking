@@ -2,6 +2,7 @@
 import BookingRepositoryInterface from "../../../Domain/Booking/Repository/BookingRepositoryInterface.js";
 import Booking from "../../../Domain/Booking/Entity/Booking.js";
 import BookingSeat from "../../../Domain/Booking/Entity/BookingSeat.js";
+import BookingCombo from "../../../Domain/Booking/Entity/BookingCombo.js";
 
 class MySQLBookingRepository extends BookingRepositoryInterface {
   constructor(pool) {
@@ -23,9 +24,13 @@ class MySQLBookingRepository extends BookingRepositoryInterface {
 
     if (rows.length === 0) return null;
 
-    const seats = await this.#fetchSeats(id);
+    // Fetch song song cả Seats và Combos
+    const [seats, combos] = await Promise.all([
+      this.#fetchSeats(id),
+      this.#fetchCombos(id), // Phương thức mới
+    ]);
 
-    return Booking.fromPersistence({ ...rows[0], seats });
+    return Booking.fromPersistence({ ...rows[0], seats, combos });
   }
 
   // ── Tìm booking theo id + userId — verify ownership ───────────────
@@ -43,9 +48,13 @@ class MySQLBookingRepository extends BookingRepositoryInterface {
 
     if (rows.length === 0) return null;
 
-    const seats = await this.#fetchSeats(id);
+    // Fetch song song cả Seats và Combos
+    const [seats, combos] = await Promise.all([
+      this.#fetchSeats(id),
+      this.#fetchCombos(id),
+    ]);
 
-    return Booking.fromPersistence({ ...rows[0], seats });
+    return Booking.fromPersistence({ ...rows[0], seats, combos });
   }
 
   // ── Lấy lịch sử đặt vé của 1 user — có phân trang ─────────────────
@@ -122,7 +131,9 @@ class MySQLBookingRepository extends BookingRepositoryInterface {
     );
 
     return {
-      data: rows.map((row) => Booking.fromPersistence({ ...row, seats: [] })),
+      data: rows.map((row) =>
+        Booking.fromPersistence({ ...row, seats: [], combos: [] }),
+      ),
       total: Number(total),
       page,
       limit,
@@ -155,6 +166,7 @@ class MySQLBookingRepository extends BookingRepositoryInterface {
   // ── Lưu booking mới — insert bookings + booking_seats trong transaction
   // Dùng trong CreateBookingHandler
   // Nếu insert booking_seats thất bại → rollback cả booking
+  // ── Lưu booking mới — insert bookings + booking_seats + booking_combos
   async save(booking) {
     const conn = await this.pool.getConnection();
 
@@ -193,24 +205,40 @@ class MySQLBookingRepository extends BookingRepositoryInterface {
       const bookingId = result.insertId;
 
       // ── Bước 2: Bulk insert booking_seats ───────────────────────────
-      // Dùng multi-row INSERT — tránh N round-trip cho N ghế
       const seats = booking.seats;
-      const placeholders = seats.map(() => `(?,?,?,?,?)`).join(",");
-      const values = seats.flatMap((seat) => {
+      const seatPlaceholders = seats.map(() => `(?,?,?,?,?)`).join(",");
+      const seatValues = seats.flatMap((seat) => {
         const { seat_id, seat_label, seat_type, price } = seat.toPersistence();
         return [bookingId, seat_id, seat_label, seat_type, price];
       });
 
       const [seatsResult] = await conn.execute(
         `INSERT INTO booking_seats (booking_id, seat_id, seat_label, seat_type, price)
-         VALUES ${placeholders}`,
-        values,
+         VALUES ${seatPlaceholders}`,
+        seatValues,
       );
+
+      // ── Bước 3: Bulk insert booking_combos (Mới) ────────────────────
+      let firstComboId = null;
+      if (booking.combos && booking.combos.length > 0) {
+        const comboPlaceholders = booking.combos
+          .map(() => `(?,?,?,?,?)`)
+          .join(",");
+        const comboValues = booking.combos.flatMap((c) => {
+          return [bookingId, c.comboId, c.comboName, c.quantity, c.price];
+        });
+
+        const [comboResult] = await conn.execute(
+          `INSERT INTO booking_combos (booking_id, combo_id, combo_name, quantity, price)
+           VALUES ${comboPlaceholders}`,
+          comboValues,
+        );
+        firstComboId = comboResult.insertId;
+      }
 
       await conn.commit();
 
-      // ── Bước 3: Reconstruct entity với id thật ───────────────────────
-      // MySQL trả về insertId của row đầu tiên — các row sau tăng tuần tự
+      // ── Bước 4: Reconstruct entity với id thật ───────────────────────
       const firstSeatId = seatsResult.insertId;
 
       const savedSeats = seats.map((seat, index) =>
@@ -221,6 +249,18 @@ class MySQLBookingRepository extends BookingRepositoryInterface {
           seat_label: seat.seatLabel,
           seat_type: seat.seatType,
           price: seat.price,
+        }),
+      );
+
+      // Reconstruct combos để trả về response
+      const savedCombos = (booking.combos || []).map((combo, index) =>
+        BookingCombo.fromPersistence({
+          id: firstComboId !== null ? firstComboId + index : null,
+          booking_id: bookingId,
+          combo_id: combo.comboId,
+          combo_name: combo.comboName,
+          quantity: combo.quantity,
+          price: combo.price,
         }),
       );
 
@@ -235,6 +275,7 @@ class MySQLBookingRepository extends BookingRepositoryInterface {
         cancelled_at,
         created_at,
         seats: savedSeats,
+        combos: savedCombos, // <-- Đã được gán mảng combos vào đây
       });
     } catch (err) {
       await conn.rollback();
@@ -290,6 +331,17 @@ class MySQLBookingRepository extends BookingRepositoryInterface {
     );
 
     return rows.map((row) => BookingSeat.fromPersistence(row));
+  }
+
+  // Private helper mới để lấy combo
+  async #fetchCombos(bookingId) {
+    const [rows] = await this.pool.execute(
+      `SELECT id, booking_id, combo_id, combo_name, quantity, price
+       FROM booking_combos
+       WHERE booking_id = ?`,
+      [bookingId],
+    );
+    return rows.map((row) => BookingCombo.fromPersistence(row));
   }
 
   // Thêm method này vào class MySQLBookingRepository

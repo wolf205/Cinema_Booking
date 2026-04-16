@@ -22,6 +22,7 @@ class Booking {
     userId,
     showtimeId,
     seats,
+    combos,
     totalPrice,
     status,
     heldUntil,
@@ -33,6 +34,7 @@ class Booking {
     this.userId = userId;
     this.showtimeId = showtimeId;
     this.seats = seats ?? []; // mảng BookingSeat
+    this.combos = combos ?? []; // mảng BookingCombo
     this.totalPrice = totalPrice;
     this.status = status ?? "PENDING";
     this.heldUntil =
@@ -115,9 +117,10 @@ class Booking {
    * @param {number}       params.userId
    * @param {number}       params.showtimeId
    * @param {BookingSeat[]} params.seats
+   * @param {BookingCombo[]} params.combos
    * @param {number}       params.totalPrice
    */
-  static create({ userId, showtimeId, seats, totalPrice }) {
+  static create({ userId, showtimeId, seats, combos, totalPrice }) {
     const heldUntil = new Date();
     heldUntil.setMinutes(heldUntil.getMinutes() + HOLD_MINUTES);
 
@@ -130,6 +133,7 @@ class Booking {
       userId,
       showtimeId,
       seats,
+      combos: combos ?? [],
       totalPrice,
       status: "PENDING",
       heldUntil,
@@ -151,12 +155,14 @@ class Booking {
     cancelled_at,
     created_at,
     seats = [],
+    combos = [],
   }) {
     return new Booking({
       id: Number(id),
       userId: Number(user_id),
       showtimeId: Number(showtime_id),
       seats,
+      combos,
       totalPrice: Number(total_price),
       status,
       heldUntil: new Date(held_until),
@@ -174,6 +180,7 @@ class Booking {
       userId: this.userId,
       showtimeId: this.showtimeId,
       seats: this.seats.map((s) => s.toJSON()),
+      combos: this.combos.map((c) => c.toJSON()),
       totalPrice: this.totalPrice,
       status: this.status,
       heldUntil: this.heldUntil,
