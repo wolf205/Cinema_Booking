@@ -19,6 +19,8 @@ SET time_zone = "+00:00";
 
 --
 -- Database: `cinema_booking`
+CREATE DATABASE IF NOT EXISTS `cinema_booking`;
+USE `cinema_booking`;
 --
 
 -- --------------------------------------------------------
