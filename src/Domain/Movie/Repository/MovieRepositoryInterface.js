@@ -22,6 +22,10 @@ class MovieRepositoryInterface {
   async existsById(id) {
     throw new Error("Not implemented");
   }
+
+  async getHotMovies(limit) {
+    throw new Error("Not implemented");
+  }
 }
 
 export default MovieRepositoryInterface;

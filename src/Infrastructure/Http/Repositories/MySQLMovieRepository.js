@@ -214,6 +214,33 @@ class MySQLMovieRepository extends MovieRepositoryInterface {
     return rows.length > 0;
   }
 
+  async getHotMovies(limit = 5) {
+    // Tính score dựa trên số ghế (booking_seats) của các booking đã CONFIRMED
+    // Không đếm suất chiếu đã bị hủy hoặc các phim đã kết thúc
+    const query = `
+      SELECT m.id, m.title, m.duration, m.genres, m.directors,
+             m.release_date, m.end_date, m.poster_url, m.description,
+             m.age_rating, m.language, m.created_at,
+             (
+                 COUNT(CASE WHEN b.confirmed_at >= NOW() - INTERVAL 1 DAY THEN bs.id END) * 0.6 +
+                 COUNT(CASE WHEN b.confirmed_at >= NOW() - INTERVAL 7 DAY THEN bs.id END) * 0.4
+             ) AS hot_score
+      FROM movies m
+      LEFT JOIN showtimes s ON m.id = s.movie_id AND s.cancelled_at IS NULL
+      LEFT JOIN bookings b ON s.id = b.showtime_id AND b.status = 'CONFIRMED'
+      LEFT JOIN booking_seats bs ON b.id = bs.booking_id
+      WHERE (m.end_date >= NOW() OR m.end_date IS NULL)
+      GROUP BY m.id
+      ORDER BY hot_score DESC, m.release_date DESC
+      LIMIT ?
+    `;
+
+    const [rows] = await this.pool.execute(query, [Number(limit)]);
+
+    // Vẫn trả về Entity Movie theo chuẩn DDD bằng helper #toEntity đã có
+    return rows.map((row) => this.#toEntity(row));
+  }
+
   // ── Private helper — map raw DB row → Movie entity ─────────────────
   // genres và directors được lưu dạng JSON string trong DB
   // MySQL2 tự parse JSON column nếu driver nhận ra kiểu JSON,

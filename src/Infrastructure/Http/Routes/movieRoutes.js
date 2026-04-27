@@ -9,6 +9,8 @@ const router = express.Router();
 // ── Public routes — không cần đăng nhập ───────────────────────────────────
 router.get("/", (req, res, next) => movieController.list(req, res, next));
 
+router.get("/hot", (req, res, next) => movieController.listHot(req, res, next));
+
 router.get("/:id", (req, res, next) => movieController.get(req, res, next));
 
 // ── Admin routes — cần đăng nhập + role admin ─────────────────────────────

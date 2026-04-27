@@ -4,6 +4,7 @@ import UpdateMovieCommand from "../../../Application/Movie/Command/UpdateMovieCo
 import DeleteMovieCommand from "../../../Application/Movie/Command/DeleteMovieCommand.js";
 import GetMovieQuery from "../../../Application/Movie/Query/GetMovieQuery.js";
 import ListMoviesQuery from "../../../Application/Movie/Query/ListMoviesQuery.js";
+import ListHotMoviesQuery from "../../../Application/Movie/Query/ListHotMoviesQuery.js";
 
 class MovieController {
   constructor(
@@ -12,12 +13,14 @@ class MovieController {
     deleteMovieHandler,
     getMovieHandler,
     listMoviesHandler,
+    listHotMoviesHandler,
   ) {
     this.createMovieHandler = createMovieHandler;
     this.updateMovieHandler = updateMovieHandler;
     this.deleteMovieHandler = deleteMovieHandler;
     this.getMovieHandler = getMovieHandler;
     this.listMoviesHandler = listMoviesHandler;
+    this.listHotMoviesHandler = listHotMoviesHandler;
   }
 
   // GET /movies
@@ -87,6 +90,18 @@ class MovieController {
         success: true,
         data: { message: `Xóa phim id=${req.params.id} thành công` },
       });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  // GET /movies/hot
+  async listHot(req, res, next) {
+    try {
+      const query = new ListHotMoviesQuery();
+      const result = await this.listHotMoviesHandler.execute(query);
+
+      res.status(200).json({ success: true, ...result });
     } catch (err) {
       next(err);
     }

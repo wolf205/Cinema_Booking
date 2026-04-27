@@ -29,6 +29,7 @@ import UpdateMovieHandler from "../../Application/Movie/Handler/UpdateMovieHandl
 import DeleteMovieHandler from "../../Application/Movie/Handler/DeleteMovieHandler.js";
 import GetMovieHandler from "../../Application/Movie/Handler/GetMovieHandler.js";
 import ListMoviesHandler from "../../Application/Movie/Handler/ListMoviesHandler.js";
+import ListHotMoviesHandler from "../../Application/Movie/Handler/ListHotMoviesHandler.js";
 
 import CreateCinemaHandler from "../../Application/Cinema/Handler/CreateCinemaHandler.js";
 import UpdateCinemaHandler from "../../Application/Cinema/Handler/UpdateCinemaHandler.js";
@@ -143,6 +144,7 @@ const updateMovieHandler = new UpdateMovieHandler(movieRepository);
 const deleteMovieHandler = new DeleteMovieHandler(movieRepository);
 const getMovieHandler = new GetMovieHandler(movieRepository);
 const listMoviesHandler = new ListMoviesHandler(movieRepository);
+const listHotMoviesHandler = new ListHotMoviesHandler(movieRepository);
 
 const createCinemaHandler = new CreateCinemaHandler(cinemaRepository);
 const updateCinemaHandler = new UpdateCinemaHandler(cinemaRepository);
@@ -266,6 +268,7 @@ const movieController = new MovieController(
   deleteMovieHandler,
   getMovieHandler,
   listMoviesHandler,
+  listHotMoviesHandler,
 );
 
 const cinemaController = new CinemaController(
