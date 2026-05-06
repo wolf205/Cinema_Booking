@@ -3,6 +3,7 @@ import express from "express";
 import { movieController } from "../../Config/container.js";
 import authMiddleware from "../Middlewares/authMiddleware.js";
 import requireRole from "../Middlewares/roleMiddleware.js";
+import ratingRoutes from "./ratingRoutes.js";
 
 const router = express.Router();
 
@@ -25,5 +26,8 @@ router.patch("/:id", authMiddleware, requireRole("admin"), (req, res, next) =>
 router.delete("/:id", authMiddleware, requireRole("admin"), (req, res, next) =>
   movieController.delete(req, res, next),
 );
+
+// Nested route — /movies/:movieId/ratings
+router.use("/:movieId/ratings", ratingRoutes);
 
 export default router;

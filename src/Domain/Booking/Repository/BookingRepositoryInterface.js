@@ -98,6 +98,11 @@ class BookingRepositoryInterface {
     throw new AppError("Not implemented", 500);
   }
 
+  // Dùng trong CreateRatingHandler — verify user đã xem phim trước khi cho rate
+  async existsConfirmedByUserIdAndMovieId(userId, movieId) {
+    throw new AppError("Not implemented", 500);
+  }
+
   async updateWithConn(booking, conn) {
     throw new AppError("Not implemented", 500);
   }

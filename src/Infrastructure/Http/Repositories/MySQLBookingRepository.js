@@ -317,6 +317,23 @@ class MySQLBookingRepository extends BookingRepositoryInterface {
     return rows.length > 0;
   }
 
+  // ── Kiểm tra user đã xem phim chưa — dùng trong CreateRatingHandler ──
+  // "Đã xem" = có booking CONFIRMED cho showtime thuộc movieId này
+  async existsConfirmedByUserIdAndMovieId(userId, movieId) {
+    const [rows] = await this.pool.execute(
+      `SELECT 1
+     FROM bookings b
+     JOIN showtimes s ON s.id = b.showtime_id
+     WHERE b.user_id   = ?
+       AND s.movie_id  = ?
+       AND b.status    = 'CONFIRMED'
+     LIMIT 1`,
+      [userId, movieId],
+    );
+
+    return rows.length > 0;
+  }
+
   // ── Private helpers ───────────────────────────────────────────────
 
   // Fetch booking_seats của 1 booking — dùng trong findById, findByIdAndUserId

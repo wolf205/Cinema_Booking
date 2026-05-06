@@ -1,4 +1,5 @@
 import express from "express";
+import cors from "cors";
 import { errorMiddleware } from "./Infrastructure/Http/Middlewares/errorMiddleware.js";
 import authRoutes from "./Infrastructure/Http/Routes/authRoutes.js";
 import movieRoutes from "./Infrastructure/Http/Routes/movieRoutes.js";
@@ -16,6 +17,15 @@ import comboRoutes from "./Infrastructure/Http/Routes/comboRoutes.js";
 import { globalLimiter } from "./Infrastructure/Http/Middlewares/rateLimitMiddleware.js";
 
 const app = express();
+
+app.use(
+  cors({
+    origin: "http://localhost:5173", // Thay bằng URL chạy React của bạn (Vite mặc định là 5173)
+    credentials: true, // RẤT QUAN TRỌNG: Cho phép đính kèm token/cookie từ frontend gửi xuống
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"], // Các method HTTP được phép
+    allowedHeaders: ["Content-Type", "Authorization"], // Chấp nhận các header này
+  }),
+);
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
