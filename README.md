@@ -35,6 +35,7 @@ CineBooking API cung cấp đầy đủ backend cho ứng dụng đặt vé rạ
 - Phân quyền admin / user
 - Quản lý hồ sơ người dùng (profile, đổi mật khẩu, phân quyền)
 - Báo cáo doanh thu (tổng quan, theo thời gian, theo phim, theo rạp)
+- Đánh giá phim (ratings & reviews) — chỉ dành cho user đã xem
 - Rate limiting toàn cục và cho auth endpoints
 
 ---
@@ -176,7 +177,8 @@ src/
 │   ├── Booking/
 │   │   ├── Entity/
 │   │   │   ├── Booking.js
-│   │   │   └── BookingSeat.js
+│   │   │   ├── BookingSeat.js
+│   │   │   └── BookingCombo.js
 │   │   └── Repository/BookingRepositoryInterface.js
 │   ├── Payment/
 │   │   ├── Entity/Payment.js
@@ -184,6 +186,12 @@ src/
 │   ├── Ticket/
 │   │   ├── Entity/Ticket.js
 │   │   └── Repository/TicketRepositoryInterface.js
+│   ├── Rating/
+│   │   ├── Entity/Rating.js
+│   │   └── Repository/RatingRepositoryInterface.js
+│   ├── Combo/
+│   │   ├── Entity/Combo.js
+│   │   └── Repository/ComboRepositoryInterface.js
 │   └── Report/
 │       └── Repository/ReportRepositoryInterface.js
 │
@@ -193,7 +201,7 @@ src/
 │   │   └── Handler/                # RegisterHandler, LoginHandler, LogoutHandler, RefreshTokenHandler
 │   ├── Movie/
 │   │   ├── Command/                # CreateMovieCommand, UpdateMovieCommand, DeleteMovieCommand
-│   │   ├── Query/                  # GetMovieQuery, ListMoviesQuery
+│   │   ├── Query/                  # GetMovieQuery, ListMoviesQuery, ListHotMoviesQuery
 │   │   └── Handler/
 │   ├── Cinema/
 │   │   ├── Command/                # CreateCinemaCommand, UpdateCinemaCommand, DeleteCinemaCommand
@@ -221,6 +229,15 @@ src/
 │   │   ├── Command/                # IssueTicketCommand
 │   │   ├── Query/                  # GetTicketQuery
 │   │   └── Handler/                # IssueTicketHandler, GetTicketHandler
+│   ├── Rating/
+│   │   ├── Command/                # CreateRatingCommand
+│   │   ├── Query/                  # GetMovieRatingsQuery
+│   │   └── Handler/                # CreateRatingHandler, GetMovieRatingsHandler
+│   ├── Combo/
+│   │   ├── Command/                # CreateComboCommand, UpdateComboCommand, DeleteComboCommand
+│   │   ├── Query/                  # GetComboQuery, ListCombosQuery
+│   │   └── Handler/                # CreateComboHandler, UpdateComboHandler, DeleteComboHandler
+│   │                               # GetComboHandler, ListCombosHandler
 │   ├── User/
 │   │   ├── Command/                # UpdateProfileCommand, ChangePasswordCommand, UpdateUserRoleCommand
 │   │   ├── Query/                  # GetProfileQuery, ListUsersQuery
@@ -249,6 +266,8 @@ src/
         │   ├── BookingController.js
         │   ├── PaymentController.js
         │   ├── TicketController.js
+        │   ├── RatingController.js
+        │   ├── ComboController.js
         │   ├── UserController.js
         │   ├── ReportController.js
         │   └── UploadController.js
@@ -268,12 +287,14 @@ src/
         │   ├── MySQLBookingRepository.js
         │   ├── MySQLPaymentRepository.js
         │   ├── MySQLTicketRepository.js
+        │   ├── MySQLRatingRepository.js
+        │   ├── MySQLComboRepository.js
         │   └── MySQLReportRepository.js
         ├── Services/
         │   └── NodemailerService.js
         └── Routes/
             ├── authRoutes.js
-            ├── movieRoutes.js
+            ├── movieRoutes.js      # Kèm nested: /movies/:movieId/ratings
             ├── cinemaRoutes.js
             ├── roomRoutes.js
             ├── seatRoutes.js
@@ -281,6 +302,8 @@ src/
             ├── bookingRoutes.js
             ├── paymentRoutes.js
             ├── ticketRoutes.js
+            ├── ratingRoutes.js
+            ├── comboRoutes.js
             ├── userRoutes.js
             ├── reportRoutes.js
             └── uploadRoutes.js
@@ -328,6 +351,7 @@ src/
 | Method | Endpoint | Auth | Mô tả |
 |---|---|---|---|
 | GET | `/movies` | — | Danh sách phim (filter: `genre`, `status`, `page`, `limit`) |
+| GET | `/movies/hot` | — | Top phim hot (tính theo lượt đặt vé 1–7 ngày gần nhất) |
 | GET | `/movies/:id` | — | Chi tiết phim |
 | POST | `/movies` | 🔐 Admin | Thêm phim mới |
 | PATCH | `/movies/:id` | 🔐 Admin | Cập nhật phim (partial update) |
@@ -342,6 +366,59 @@ GET /movies?status=now_showing&genre=Hành+động&page=1&limit=10
 - `coming_soon` — chưa đến ngày chiếu
 - `now_showing` — đang chiếu
 - `ended` — đã kết thúc
+
+---
+
+### Ratings (Đánh giá phim)
+
+Ratings được mount dưới dạng nested route của movies: `/movies/:movieId/ratings`.
+
+| Method | Endpoint | Auth | Mô tả |
+|---|---|---|---|
+| GET | `/movies/:movieId/ratings` | — | Danh sách đánh giá của phim (kèm stats) |
+| POST | `/movies/:movieId/ratings` | ✅ | Gửi đánh giá (chỉ user đã xem phim) |
+
+**Request body — tạo đánh giá:**
+```json
+{
+  "score": 8,
+  "review": "Phim hay, diễn xuất tốt, hiệu ứng hình ảnh đẹp mắt."
+}
+```
+
+`score` là số nguyên từ **1 đến 10**. `review` là tùy chọn, tối đa 1000 ký tự.
+
+**Response — danh sách đánh giá:**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 1,
+      "userId": 3,
+      "userName": "Nguyễn Văn A",
+      "userAvatar": null,
+      "movieId": 1,
+      "score": 8,
+      "review": "Phim hay!",
+      "createdAt": "2025-12-25T10:00:00.000Z"
+    }
+  ],
+  "meta": {
+    "total": 42,
+    "page": 1,
+    "limit": 10,
+    "totalPages": 5,
+    "averageScore": 7.8,
+    "totalRatings": 42
+  }
+}
+```
+
+**Quy tắc nghiệp vụ quan trọng:**
+- Mỗi user chỉ được đánh giá **1 lần** mỗi phim — gửi lần 2 trả về `409 Conflict`
+- Chỉ được đánh giá nếu có ít nhất 1 booking **CONFIRMED** cho showtime thuộc phim đó — gửi khi chưa xem trả về `403 Forbidden`
+- `averageScore` và `totalRatings` được tính trực tiếp từ DB bằng `AVG()` và `COUNT()`, làm tròn 1 chữ số thập phân
 
 ---
 
@@ -400,6 +477,30 @@ GET /movies?status=now_showing&genre=Hành+động&page=1&limit=10
 
 ---
 
+### Combos (Bắp nước)
+
+| Method | Endpoint | Auth | Mô tả |
+|---|---|---|---|
+| GET | `/combos` | — | Danh sách combo (filter: `isActive`) |
+| GET | `/combos/:id` | — | Chi tiết combo |
+| POST | `/combos` | 🔐 Admin | Tạo combo mới |
+| PATCH | `/combos/:id` | 🔐 Admin | Cập nhật combo (name, description, price, imageUrl, isActive) |
+| DELETE | `/combos/:id` | 🔐 Admin | Xóa combo |
+
+Combo có thể được thêm vào booking khi đặt vé bằng cách truyền `comboItems` vào `POST /bookings`.
+
+**Request body — tạo combo:**
+```json
+{
+  "name": "Combo 1 Bắp 2 Nước",
+  "description": "1 Bắp ngọt lớn + 2 Nước ngọt cỡ vừa",
+  "price": 90000,
+  "imageUrl": "https://res.cloudinary.com/..."
+}
+```
+
+---
+
 ### Bookings
 
 | Method | Endpoint | Auth | Mô tả |
@@ -407,18 +508,24 @@ GET /movies?status=now_showing&genre=Hành+động&page=1&limit=10
 | GET | `/bookings/showtimes/:showtimeId/seats` | — | Sơ đồ ghế theo suất chiếu (kèm trạng thái + giá) |
 | GET | `/bookings` | ✅ | Lịch sử đặt vé của user (filter: `status`) |
 | GET | `/bookings/all` | 🔐 Admin | Tất cả booking (filter: `status`, `userId`) |
-| GET | `/bookings/:id` | ✅ | Chi tiết booking (kèm showtime, movie, seats) |
+| GET | `/bookings/:id` | ✅ | Chi tiết booking (kèm showtime, movie, seats, combos) |
 | POST | `/bookings` | ✅ | Đặt vé — giữ ghế 10 phút |
 | PATCH | `/bookings/:id/confirm` | ✅ | Xác nhận thanh toán trực tiếp |
 | PATCH | `/bookings/:id/cancel` | ✅ | Hủy booking |
 
-**Request body — đặt vé:**
+**Request body — đặt vé (kèm combo):**
 ```json
 {
   "showtimeId": 5,
-  "seatIds": [101, 102]
+  "seatIds": [101, 102],
+  "comboItems": [
+    { "comboId": 1, "quantity": 2 },
+    { "comboId": 3, "quantity": 1 }
+  ]
 }
 ```
+
+`comboItems` là tùy chọn — bỏ qua nếu không muốn thêm combo. `totalPrice` tự động cộng thêm giá combo × số lượng.
 
 > Sau khi tạo booking, ghế được giữ trong **10 phút** (trạng thái `PENDING`). Nếu quá thời gian mà chưa confirm, ghế tự động trống lại — không cần cron job, xử lý trong query `findOccupiedSeatIdsByShowtimeId`.
 
@@ -579,7 +686,7 @@ Chấp nhận: `JPG`, `PNG`, `WEBP`. Tối đa **5MB**.
 
 ## Luồng nghiệp vụ chính
 
-### Luồng đặt vé đầy đủ (với Payment + Ticket + Email)
+### Luồng đặt vé đầy đủ (với Combo + Payment + Ticket + Email)
 
 ```
 1. User xem danh sách phim đang chiếu
@@ -591,20 +698,41 @@ Chấp nhận: `JPG`, `PNG`, `WEBP`. Tối đa **5MB**.
 3. Chọn suất chiếu → xem sơ đồ ghế còn trống + giá
    GET /bookings/showtimes/:showtimeId/seats
 
-4. Chọn ghế → đặt vé (cần đăng nhập)
-   POST /bookings  { showtimeId, seatIds }
-   → Ghế được giữ 10 phút, status = PENDING
+4. (Tùy chọn) Xem danh sách combo bắp nước
+   GET /combos?isActive=true
 
-5. Khởi tạo payment session
+5. Chọn ghế + combo → đặt vé (cần đăng nhập)
+   POST /bookings  { showtimeId, seatIds, comboItems }
+   → Ghế được giữ 10 phút, status = PENDING
+   → totalPrice = tổng ghế + tổng combo
+
+6. Khởi tạo payment session
    POST /payments  { bookingId, provider: "MOCK" }
    → Nhận paymentUrl
 
-6. Thực hiện thanh toán (mock)
+7. Thực hiện thanh toán (mock)
    POST /payments/:id/confirm
    → Payment: SUCCESS
    → Booking: CONFIRMED     (trong 1 transaction)
    → Ticket: tự động phát hành (qrCode sinh tự động)
    → Email: gửi xác nhận tới địa chỉ email của user
+```
+
+### Luồng đánh giá phim
+
+```
+1. User xem chi tiết phim
+   GET /movies/:id
+
+2. Xem đánh giá của người khác
+   GET /movies/:movieId/ratings?page=1&limit=10
+   → Kèm averageScore và totalRatings trong meta
+
+3. Sau khi đã xem phim (booking CONFIRMED), gửi đánh giá
+   POST /movies/:movieId/ratings
+   { "score": 9, "review": "Phim rất hay!" }
+   → 403 nếu chưa có booking CONFIRMED cho phim này
+   → 409 nếu đã rate phim này rồi
 ```
 
 ### Luồng thanh toán thất bại / thử lại
@@ -680,11 +808,11 @@ Chấp nhận: `JPG`, `PNG`, `WEBP`. Tối đa **5MB**.
 ## Database Schema
 
 ```sql
-users (id, name, email, password_hash, role, avatar_url, phone, date_of_birth, updated_at, created_at)
-refresh_tokens (id, user_id, token, expires_at, created_at)
+users         (id, name, email, password_hash, role, avatar_url, phone, date_of_birth, updated_at, created_at)
+refresh_tokens(id, user_id, token, expires_at, created_at)
 
-movies (id, title, duration, genres, directors, release_date, end_date,
-        poster_url, description, age_rating, language, created_at)
+movies  (id, title, duration, genres, directors, release_date, end_date,
+         poster_url, description, age_rating, language, created_at)
 
 cinemas (id, name, address, city, phone, image_url, created_at)
 rooms   (id, cinema_id, name, type, total_rows, seats_per_row, created_at)
@@ -693,18 +821,24 @@ seats   (id, room_id, row, number, type, is_active, created_at)
 showtimes (id, movie_id, room_id, start_time, end_time,
            base_price, vip_price, couple_price, cancelled_at, created_at)
 
+combos        (id, name, description, price, image_url, is_active, created_at)
+
 bookings      (id, user_id, showtime_id, total_price, status,
                held_until, confirmed_at, cancelled_at, created_at)
 booking_seats (id, booking_id, seat_id, seat_label, seat_type, price)
+booking_combos(id, booking_id, combo_id, combo_name, quantity, price)
 
 payments (id, booking_id, user_id, amount, status, provider,
           transaction_id, expired_at, paid_at, created_at)
 
 tickets (id, booking_id, user_id, showtime_id, qr_code,
          is_used, used_at, issued_at)
+
+ratings (id, user_id, movie_id, score, review, created_at)
+        -- UNIQUE KEY (user_id, movie_id)
 ```
 
-Cascade deletes: `cinemas → rooms → seats`, `bookings → booking_seats`.
+Cascade deletes: `cinemas → rooms → seats`, `bookings → booking_seats → booking_combos`, `movies → ratings`, `users → ratings`.
 
 ---
 
@@ -714,7 +848,7 @@ Cascade deletes: `cinemas → rooms → seats`, `bookings → booking_seats`.
 
 **`status` không lưu vào DB** — cả `Movie.status`, `Showtime.status`, `Payment.isExpired()` đều là computed getter tính từ timestamp. Không bao giờ bị stale, không cần cron job cập nhật.
 
-**Giá vé snapshot tại thời điểm đặt** — `booking_seats.price` lưu giá tại lúc tạo booking, không reference ngược về `showtimes`. Admin đổi giá sau không ảnh hưởng booking cũ.
+**Giá vé snapshot tại thời điểm đặt** — `booking_seats.price` lưu giá tại lúc tạo booking, không reference ngược về `showtimes`. Admin đổi giá sau không ảnh hưởng booking cũ. Tương tự, `booking_combos.price` và `combo_name` cũng là snapshot tại thời điểm đặt.
 
 **Hold ghế không cần Redis hay cron** — `held_until` là timestamp trong DB. Query `findOccupiedSeatIdsByShowtimeId` chỉ tính ghế là "đang bị giữ" khi `status = 'PENDING' AND held_until > NOW()`. PENDING hết hạn tự động bị bỏ qua.
 
@@ -731,5 +865,9 @@ Cascade deletes: `cinemas → rooms → seats`, `bookings → booking_seats`.
 **`PATCH /:id/cancel` thay vì `DELETE`** — soft delete để giữ audit trail. Booking và showtime đã hủy vẫn cần tham chiếu được từ lịch sử.
 
 **Conflict lịch chiếu** — dùng overlap condition chuẩn: `startTime_mới < end_time_cũ AND endTime_mới > start_time_cũ`, chỉ kiểm tra suất chưa hủy (`cancelled_at IS NULL`). Khi update showtime, bỏ qua chính suất chiếu đang được sửa (`excludeId`).
+
+**Rating chỉ dành cho người đã xem** — `CreateRatingHandler` gọi `bookingRepository.existsConfirmedByUserIdAndMovieId()` để xác minh user thực sự đã xem phim trước khi cho phép đánh giá. Tránh fake review từ người chưa mua vé. UNIQUE KEY `(user_id, movie_id)` ở tầng DB là lớp bảo vệ cuối cùng.
+
+**Rating response kèm thông tin user** — `findByMovieId` JOIN thêm bảng `users` để lấy `name` và `avatar_url`, tránh client phải gọi thêm API. Dùng monkey-patch `toJSON()` ở tầng repository thay vì tạo thêm DTO class riêng — đơn giản hơn cho use case chỉ dùng ở 1 chỗ.
 
 **Rate limiting 2 tầng** — `globalLimiter` (100 req / 15 phút) áp dụng toàn API; `authLimiter` (10 req / phút) chỉ áp dụng cho `/signUp` và `/signIn` để chống brute-force.
