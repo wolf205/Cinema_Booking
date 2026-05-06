@@ -205,6 +205,21 @@ INSERT INTO `movies` (`id`, `title`, `duration`, `genres`, `directors`, `release
 
 -- --------------------------------------------------------
 
+CREATE TABLE `ratings` (
+  `id`         int(11)     NOT NULL AUTO_INCREMENT,
+  `user_id`    int(11)     NOT NULL,
+  `movie_id`   bigint(20) UNSIGNED NOT NULL,
+  `score`      tinyint(2)  NOT NULL COMMENT '1-10',
+  `review`     text        DEFAULT NULL,
+  `created_at` datetime    NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_user_movie` (`user_id`, `movie_id`),
+  KEY `idx_movie_id` (`movie_id`),
+  KEY `idx_user_id`  (`user_id`),
+  CONSTRAINT `ratings_ibfk_1` FOREIGN KEY (`user_id`)  REFERENCES `users`  (`id`) ON DELETE CASCADE,
+  CONSTRAINT `ratings_ibfk_2` FOREIGN KEY (`movie_id`) REFERENCES `movies` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
 --
 -- Table structure for table `payments`
 --
